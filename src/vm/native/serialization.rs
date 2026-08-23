@@ -525,8 +525,20 @@ fn json_object_values(vm: &mut Vm, args: &[JValue]) -> R {
     list_alloc(vm, nodes)
 }
 
-fn descriptor_push_annotation(_vm: &mut Vm, _args: &[JValue]) -> R {
-    // Runtime annotations do not affect the generated serializer's field map.
+fn descriptor_push_annotation(vm: &mut Vm, args: &[JValue]) -> R {
+    // Capture the annotation object (e.g. @ProtoNumber(n)) on the most
+    // recently added element — the protobuf decoder reads these to map wire
+    // field numbers back to descriptor indexes.
+    let anno = args.get(1).copied().unwrap_or(JValue::Null);
+    if let Some(Native::SerialDescriptor {
+        element_annotations,
+        ..
+    }) = payload_mut(vm, args[0])
+    {
+        if let Some(last) = element_annotations.last_mut() {
+            last.push(anno);
+        }
+    }
     Ok(JValue::Null)
 }
 
@@ -555,7 +567,7 @@ fn member_by_index(vm: &Vm, element: JValue, descriptor: JValue, index: i32) -> 
 
 /// Invokes `deserializer.deserialize(decoder)` (interface dispatch into real
 /// dex bytecode where the serializer is a dex class).
-fn invoke_deserialize(vm: &mut Vm, serializer: JValue, decoder: JValue) -> R {
+pub(crate) fn invoke_deserialize(vm: &mut Vm, serializer: JValue, decoder: JValue) -> R {
     if std::env::var("DEXVM_TRACE").is_ok() {
         eprintln!("DEXVM_TRACE native invoke_deserialize");
     }
@@ -819,9 +831,11 @@ pub(crate) fn okio_encode_to_buffered_sink(vm: &mut Vm, args: &[JValue]) -> R {
 
 /// `JsonElement$Companion.serializer()` — the JsonElement serializer marker.
 pub(crate) fn json_element_companion_serializer(vm: &mut Vm, _args: &[JValue]) -> R {
+    // KSerializer (not DeserializationStrategy) so guest `check-cast` to
+    // SerializationStrategy succeeds: KSerializer implements both.
     alloc(
         vm,
-        "Lkotlinx/serialization/DeserializationStrategy;",
+        "Lkotlinx/serialization/KSerializer;",
         Native::JsonElementSerializer,
     )
 }
@@ -1259,6 +1273,7 @@ pub(crate) fn descriptor_init(vm: &mut Vm, args: &[JValue]) -> R {
     let desc = Native::SerialDescriptor {
         name,
         elements: Vec::new(),
+        element_annotations: Vec::new(),
     };
     let Some(n) = payload_mut(vm, args[0]) else {
         return Err(npe(vm));
@@ -1270,10 +1285,18 @@ pub(crate) fn descriptor_init(vm: &mut Vm, args: &[JValue]) -> R {
 /// `PluginGeneratedSerialDescriptor.addElement(name, isInline)`.
 pub(crate) fn descriptor_add_element(vm: &mut Vm, args: &[JValue]) -> R {
     let name = jstr(vm, args[1]).unwrap_or_default();
-    let Some(Native::SerialDescriptor { elements, .. }) = payload_mut(vm, args[0]) else {
+    let Some(Native::SerialDescriptor {
+        elements,
+        element_annotations,
+        ..
+    }) = payload_mut(vm, args[0])
+    else {
         return Err(npe(vm));
     };
     elements.push(name);
+    // Keep the parallel per-element annotation list in sync so a following
+    // `pushAnnotation` lands on this element.
+    element_annotations.push(Vec::new());
     Ok(JValue::Null)
 }
 
@@ -1324,13 +1347,22 @@ pub(crate) fn array_list_serializer_init(vm: &mut Vm, args: &[JValue]) -> R {
 /// `ArrayListSerializer.deserialize(decoder)` — decodes the array currently
 /// under the decoder.
 pub(crate) fn array_list_serializer_deserialize(vm: &mut Vm, args: &[JValue]) -> R {
-    let (element, module) = match payload(vm, args[1]) {
+    match payload(vm, args[1]) {
         Some(Native::JsonDecoder {
-            element, module, ..
-        }) => (*element, *module),
+            element,
+            module,
+            ..
+        }) => run_serializer(vm, args[0], *element, *module),
+        // protobuf: consume the repeated field's consecutive wire entries.
+        Some(Native::ProtoDecoder { .. }) => {
+            let child = match payload(vm, args[0]) {
+                Some(Native::ArrayListSerializer { child }) => *child,
+                _ => return Err(npe(vm)),
+            };
+            crate::vm::native::proto::proto_list_deserialize(vm, args[1], child)
+        }
         _ => return Err(npe(vm)),
-    };
-    run_serializer(vm, args[0], element, module)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1350,9 +1382,11 @@ fn serializer_opaque_init(vm: &mut Vm, args: &[JValue]) -> R {
 /// `JsonObject$Companion.serializer()` / `JsonArray$Companion.serializer()`
 /// — the JsonElement serializer marker (decode/encode return the tree node).
 fn json_element_serializer_marker(vm: &mut Vm, _args: &[JValue]) -> R {
+    // KSerializer implements both SerializationStrategy and
+    // DeserializationStrategy, matching real kotlinx objects.
     alloc(
         vm,
-        "Lkotlinx/serialization/DeserializationStrategy;",
+        "Lkotlinx/serialization/KSerializer;",
         Native::JsonElementSerializer,
     )
 }
@@ -1509,6 +1543,7 @@ fn polymorphic_get_descriptor(vm: &mut Vm, _args: &[JValue]) -> R {
         Native::SerialDescriptor {
             name: "Polymorphic".into(),
             elements: Vec::new(),
+            element_annotations: Vec::new(),
         },
     )
 }
@@ -1672,6 +1707,7 @@ fn primitive_serial_descriptor(vm: &mut Vm, args: &[JValue]) -> R {
         Native::SerialDescriptor {
             name,
             elements: Vec::new(),
+            element_annotations: Vec::new(),
         },
     )
 }
@@ -1686,6 +1722,7 @@ fn build_class_descriptor_default(vm: &mut Vm, args: &[JValue]) -> R {
         Native::SerialDescriptor {
             name,
             elements: Vec::new(),
+            element_annotations: Vec::new(),
         },
     )
 }
@@ -1699,6 +1736,7 @@ fn inline_class_descriptor_init(vm: &mut Vm, args: &[JValue]) -> R {
     vm.arena.objects[this as usize].native = Some(Native::SerialDescriptor {
         name,
         elements: Vec::new(),
+        element_annotations: Vec::new(),
     });
     Ok(JValue::Null)
 }
@@ -1721,6 +1759,7 @@ fn array_list_serializer_descriptor(vm: &mut Vm, _args: &[JValue]) -> R {
         Native::SerialDescriptor {
             name: "kotlin.collections.ArrayList".into(),
             elements: Vec::new(),
+            element_annotations: Vec::new(),
         },
     )
 }
@@ -1873,6 +1912,7 @@ fn linked_hash_map_descriptor(vm: &mut Vm, _args: &[JValue]) -> R {
         Native::SerialDescriptor {
             name: "LinkedHashMap".into(),
             elements: Vec::new(),
+            element_annotations: Vec::new(),
         },
     )
 }
@@ -1920,6 +1960,7 @@ fn enum_serializer_descriptor(vm: &mut Vm, args: &[JValue]) -> R {
         Native::SerialDescriptor {
             name: String::new(),
             elements: names,
+            element_annotations: Vec::new(),
         },
     )
 }

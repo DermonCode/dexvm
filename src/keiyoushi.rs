@@ -331,6 +331,14 @@ impl Keiyoushi {
     }
 
     pub fn popular(&mut self, src: &Source, page: i32) -> Result<MangaPages, JvmError> {
+        if let Some(mangas) = self.try_fetch_observable(
+            src,
+            "fetchPopularManga",
+            "(I)Lrx/Observable;",
+            &[JValue::Int(page)],
+        )? {
+            return self.manga_pages(mangas);
+        }
         let req = self.ctx.invoke_on(
             src.inst,
             "popularMangaRequest",
@@ -348,6 +356,14 @@ impl Keiyoushi {
     }
 
     pub fn latest(&mut self, src: &Source, page: i32) -> Result<MangaPages, JvmError> {
+        if let Some(mangas) = self.try_fetch_observable(
+            src,
+            "fetchLatestUpdates",
+            "(I)Lrx/Observable;",
+            &[JValue::Int(page)],
+        )? {
+            return self.manga_pages(mangas);
+        }
         let req = self.ctx.invoke_on(
             src.inst,
             "latestUpdatesRequest",
@@ -375,6 +391,18 @@ impl Keiyoushi {
     ) -> Result<MangaPages, JvmError> {
         let flist = self.build_filter_list(filters)?;
         let query_obj = self.ctx.vm().alloc_string(query);
+
+        // Rx-style override (M+): fetchSearchManga emits the MangasPage
+        // directly and the request/parse pair below is a stub.
+        if let Some(mangas) = self.try_fetch_observable(
+            src,
+            "fetchSearchManga",
+            "(ILjava/lang/String;Leu/kanade/tachiyomi/source/model/FilterList;)Lrx/Observable;",
+            &[JValue::Int(page), query_obj, flist],
+        )? {
+            return self.manga_pages(mangas);
+        }
+
         let req = self.ctx.invoke_on(
             src.inst,
             "searchMangaRequest",
@@ -391,8 +419,78 @@ impl Keiyoushi {
         self.manga_pages(mangas)
     }
 
+    /// Tries the RxJava-style `fetch*` override for a source operation.
+    ///
+    /// Old-style sources (M+) override `fetchSearchManga` & friends and leave
+    /// the request/parse pair as deliberate
+    /// `throw UnsupportedOperationException` stubs; coroutine-era sources
+    /// inherit the Rx default which delegates back to those same hooks. This
+    /// helper runs the override when present and unwraps the synchronously
+    /// evaluated Observable:
+    /// - missing method / inner `UnsupportedOperationException` → `Ok(None)`
+    ///   (caller falls back to the request+parse path),
+    /// - success → `Ok(Some(value))` (the single emitted item).
+    fn try_fetch_observable(
+        &mut self,
+        src: &Source,
+        method: &str,
+        sig: &str,
+        args: &[JValue],
+    ) -> Result<Option<JValue>, JvmError> {
+        use crate::vm::object::Native;
+
+        let ob = match self.ctx.invoke_on(src.inst, method, sig, args) {
+            Ok(v) => v,
+            Err(JvmError::Resolution(_)) => return Ok(None),
+            Err(e) => return Err(e),
+        };
+
+        let (values, error) = match self
+            .ctx
+            .vm()
+            .payload_of(ob)
+        {
+            Some(Native::RxObservable { values, error, .. }) => (values.clone(), error),
+            _ => return Ok(None),
+        };
+
+        if let JValue::Obj(err_id) = error {
+            let class = {
+                let vm = self.ctx.vm();
+                vm.arena
+                    .objects
+                    .get(err_id as usize)
+                    .map(|o| o.class)
+                    .unwrap_or(0)
+            };
+            let class_desc = {
+                let vm = self.ctx.vm();
+                vm.class_desc_str(class)
+            };
+            if class_desc == "Ljava/lang/UnsupportedOperationException;" {
+                return Ok(None);
+            }
+            return Err(JvmError::Uncaught(err_id));
+        }
+
+        Ok(values.into_iter().next())
+    }
+
     pub fn manga_details(&mut self, src: &Source, manga: &Manga) -> Result<Manga, JvmError> {
         let m = self.alloc_manga(manga)?;
+        // Rx-style sources (e.g. M+) override `fetchMangaDetails` and leave
+        // the request/parse pair as deliberate stubs.
+        if let Some(out) = self.try_fetch_observable(
+            src,
+            "fetchMangaDetails",
+            "(Leu/kanade/tachiyomi/source/model/SManga;)Lrx/Observable;",
+            &[m],
+        )? {
+            return self
+                .read_manga(out)?
+                .ok_or_else(|| JvmError::Resolution("fetchMangaDetails: not a SManga".into()));
+        }
+
         let req = self.ctx.invoke_on(
             src.inst,
             "mangaDetailsRequest",
@@ -412,6 +510,15 @@ impl Keiyoushi {
 
     pub fn chapters(&mut self, src: &Source, manga: &Manga) -> Result<Vec<Chapter>, JvmError> {
         let m = self.alloc_manga(manga)?;
+        if let Some(list) = self.try_fetch_observable(
+            src,
+            "fetchChapterList",
+            "(Leu/kanade/tachiyomi/source/model/SManga;)Lrx/Observable;",
+            &[m],
+        )? {
+            return self.read_chapter_list(list);
+        }
+
         let req = self.ctx.invoke_on(
             src.inst,
             "chapterListRequest",
@@ -436,6 +543,15 @@ impl Keiyoushi {
             Vec::new(),
             Some(empty_chapter(url, name)),
         ));
+        if let Some(list) = self.try_fetch_observable(
+            src,
+            "fetchPageList",
+            "(Leu/kanade/tachiyomi/source/model/SChapter;)Lrx/Observable;",
+            &[c],
+        )? {
+            return self.read_page_list(list);
+        }
+
         let req = self.ctx.invoke_on(
             src.inst,
             "pageListRequest",

@@ -120,6 +120,8 @@ mod quickjs;
 mod rx;
 #[cfg(feature = "tachiyomi")]
 pub(crate) mod serialization;
+#[cfg(feature = "tachiyomi")]
+pub(crate) mod proto;
 
 #[cfg(feature = "tachiyomi")]
 pub(crate) use self::keiyoushi::*;
@@ -272,6 +274,8 @@ pub(crate) fn native_tables() -> Vec<&'static [NativeEntry]> {
     out.push(keiyoushi::KEIYOUSHI_TABLE);
     #[cfg(feature = "tachiyomi")]
     out.push(serialization::SERIALIZATION_TABLE);
+    #[cfg(feature = "tachiyomi")]
+    out.push(proto::PROTO_TABLE);
     #[cfg(feature = "tachiyomi")]
     out.push(rx::RX_TABLE);
     out.push(THROWABLE_CTORS);
@@ -496,6 +500,7 @@ pub(crate) fn default_native_for(vm: &mut Vm, id: u32) -> Option<Native> {
                 Some(Native::SerialDescriptor {
                     name: String::new(),
                     elements: Vec::new(),
+                    element_annotations: Vec::new(),
                 })
             }
             "Lkotlinx/serialization/internal/ArrayListSerializer;" => {

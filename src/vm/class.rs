@@ -3469,6 +3469,33 @@ pub static SHIM_CLASSES: &[ShimDef] = &[
     ),
     #[cfg(feature = "tachiyomi")]
     shim!(
+        "Lkotlinx/serialization/protobuf/ProtoBuf;",
+        Some("Ljava/lang/Object;"),
+        &["Lkotlinx/serialization/BinaryFormat;"],
+        0
+    ),
+    #[cfg(feature = "tachiyomi")]
+    shim!(
+        "Lkotlinx/serialization/protobuf/ProtoBuf$Companion;",
+        Some("Ljava/lang/Object;"),
+        &["Lkotlinx/serialization/BinaryFormat;"],
+        0
+    ),
+    // Composite decoder for the protobuf wire format. Methods are provided
+    // by `native::proto::PROTO_TABLE`; declaring the Decoder/CompositeDecoder
+    // interfaces lets interface-dispatch reach them.
+    #[cfg(feature = "tachiyomi")]
+    shim!(
+        "Lkotlinx/serialization/protobuf/ProtoDecoder;",
+        Some("Ljava/lang/Object;"),
+        &[
+            "Lkotlinx/serialization/encoding/Decoder;",
+            "Lkotlinx/serialization/encoding/CompositeDecoder;",
+        ],
+        0
+    ),
+    #[cfg(feature = "tachiyomi")]
+    shim!(
         "Lkotlinx/coroutines/CancellableContinuationImpl;",
         Some("Ljava/lang/Object;"),
         &[],

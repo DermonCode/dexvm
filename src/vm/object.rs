@@ -182,6 +182,15 @@ pub enum PrimitiveSerializerKind {
     Long,
 }
 
+/// protobuf wire-format value (kotlinx-serialization-protobuf shim).
+#[derive(Debug, Clone)]
+pub enum WireValue {
+    Varint(i64),
+    Fixed64(u64),
+    Bytes(Vec<u8>),
+    Fixed32(u32),
+}
+
 /// Native (Rust-backed) objects. Objects of shim classes carry one of these
 /// instead of interpreted fields.
 #[derive(Clone)]
@@ -729,10 +738,25 @@ pub enum Native {
         value: Option<JsonVal>,
         elements: Vec<(String, JsonVal)>,
     },
+    /// kotlinx.serialization.protobuf decoder over parsed wire fields.
+    ProtoDecoder {
+        /// All fields in wire order: (field number, value).
+        fields: Vec<(u32, WireValue)>,
+        /// Index of the next unconsumed entry in `fields`.
+        cursor: usize,
+        /// Field number of the entry consumed by the last
+        /// `decodeElementIndex` call, awaiting element decode.
+        cur_field: Option<u32>,
+        cur_val: Option<WireValue>,
+    },
     /// kotlinx.serialization PluginGeneratedSerialDescriptor.
     SerialDescriptor {
         name: String,
         elements: Vec<String>,
+        /// Per-element annotation objects (pushed via `pushAnnotation` right
+        /// after `addElement`), used by the protobuf decoder to map wire
+        /// field numbers (@ProtoNumber) back to descriptor indexes.
+        element_annotations: Vec<Vec<JValue>>,
     },
     /// kotlinx.serialization JsonElement serializer marker.
     JsonElementSerializer,
@@ -876,6 +900,8 @@ impl Native {
         };
         match self {
             Native::Array(ArrayData::Obj(v)) => push_all(v, out),
+            // ProtoDecoder holds no JValue references (only wire data).
+            Native::ProtoDecoder { .. } => {}
             Native::Throwable { cause, .. } => push(Some(cause), out),
             Native::ResultFailure(t) => push(Some(t), out),
             Native::Deferred { value, error } => {
