@@ -703,7 +703,10 @@ impl Vm {
                     // f.pc is a code-unit address, not an instruction index;
                     // jump to the handler's exact address.
                     f.pc = addr as usize;
-                    f.regs[0] = exc;
+                    // The exception belongs to move-exception, if present.
+                    // Writing register 0 corrupts catch handlers that simply
+                    // return a value they placed there before the try block.
+                    f.pending_exc = Some(exc);
                     return Ok(true);
                 }
                 None => {
@@ -808,7 +811,7 @@ impl Vm {
                 Flow::Next(0)
             }
             Insn::MoveException(d) => {
-                f.regs[*d as usize] = f.regs[0];
+                f.regs[*d as usize] = f.pending_exc.take().unwrap_or(JValue::Null);
                 Flow::Next(0)
             }
             Insn::ConstMethodHandle(..) | Insn::ConstMethodType(..) => {

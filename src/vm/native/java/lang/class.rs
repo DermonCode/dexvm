@@ -339,10 +339,22 @@ pub(crate) fn class_is_assignable_from(vm: &mut Vm, args: &[JValue]) -> R {
     Ok(JValue::Int(i32::from(ok)))
 }
 
-/// We have no bundled classpath resources to serve; matches the real API's
-/// "not found" contract of returning `null` rather than throwing.
-pub(crate) fn class_get_resource(_vm: &mut Vm, _args: &[JValue]) -> R {
-    Ok(JValue::Null)
+/// Resolve a classpath resource embedded in the extension APK.
+pub(crate) fn class_get_resource(vm: &mut Vm, args: &[JValue]) -> R {
+    let path = jstr(vm, args[1])?;
+    let key = path.trim_start_matches('/');
+    if !vm.resources.contains_key(key) {
+        return Ok(JValue::Null);
+    }
+    alloc(vm, "Ljava/net/URL;", Native::URI(format!("resource:/{key}")))
+}
+
+pub(crate) fn class_get_resource_as_stream(vm: &mut Vm, args: &[JValue]) -> R {
+    let path = jstr(vm, args[1])?;
+    let Some(bytes) = vm.resources.get(path.trim_start_matches('/')).cloned() else {
+        return Ok(JValue::Null);
+    };
+    alloc(vm, "Ljava/io/ByteArrayInputStream;", Native::ByteArrayInputStream { bytes, pos: 0 })
 }
 
 pub(crate) fn class_get_interfaces(_vm: &mut Vm, _args: &[JValue]) -> R {
@@ -485,6 +497,6 @@ pub(crate) const TABLE: &[NativeEntry] = &[
         "getResourceAsStream",
         "(Ljava/lang/String;)Ljava/io/InputStream;",
         true,
-        class_get_resource
+        class_get_resource_as_stream
     ),
 ];

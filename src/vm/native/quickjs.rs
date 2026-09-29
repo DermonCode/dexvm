@@ -36,7 +36,6 @@ fn quickjs_create(vm: &mut Vm, _args: &[JValue]) -> R {
 }
 
 fn js_to_jvalue(vm: &mut Vm, v: &Value) -> Result<JValue, NatErr> {
-    let npe = npe(vm);
     if v.is_null() || v.is_undefined() {
         return Ok(JValue::Null);
     }
@@ -53,7 +52,7 @@ fn js_to_jvalue(vm: &mut Vm, v: &Value) -> Result<JValue, NatErr> {
         return Ok(new_str(vm, &s));
     }
     log::warn!("quickjs: non-primitive result downgraded to null");
-    Err(npe)
+    Ok(JValue::Null)
 }
 
 fn quickjs_evaluate(vm: &mut Vm, args: &[JValue]) -> R {

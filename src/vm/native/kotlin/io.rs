@@ -58,6 +58,13 @@ fn read_bytes(vm: &mut Vm, args: &[JValue]) -> R {
     alloc_arr(vm, "B", data.len(), move || ArrayData::Byte(data))
 }
 
+fn url_read_bytes(vm: &mut Vm, args: &[JValue]) -> R {
+    let stream = vm
+        .invoke_virtual_args(args[0], "openStream", "()Ljava/io/InputStream;", vec![])
+        .map_err(nat_fatal)?;
+    read_bytes(vm, &[stream])
+}
+
 fn copy_to_default(vm: &mut Vm, args: &[JValue]) -> R {
     let bytes = stream_bytes_of(vm, args[0]).ok_or_else(|| npe(vm))?;
     let n = bytes.len() as i64;
@@ -103,6 +110,13 @@ pub(crate) const TABLE: &[NativeEntry] = &[
         "(Ljava/io/InputStream;)[B",
         false,
         read_bytes
+    ),
+    ne!(
+        "Lkotlin/io/TextStreamsKt;",
+        "readBytes",
+        "(Ljava/net/URL;)[B",
+        false,
+        url_read_bytes
     ),
     ne!(
         "Lkotlin/io/ByteStreamsKt;",

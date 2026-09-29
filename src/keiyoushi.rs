@@ -307,6 +307,11 @@ impl Keiyoushi {
         self.call_str(src, "getLang", "()Ljava/lang/String;", &[])
     }
 
+    /// Returns the website URL declared by an HTTP source.
+    pub fn source_base_url(&mut self, src: &Source) -> Result<String, JvmError> {
+        self.call_str(src, "getBaseUrl", "()Ljava/lang/String;", &[])
+    }
+
     pub fn source_id(&mut self, src: &Source) -> Result<i64, JvmError> {
         let v = self.ctx.invoke_on(src.inst, "getId", "()J", &[])?;
         match v {
@@ -1099,24 +1104,77 @@ impl Keiyoushi {
     /// per-host auth, custom headers) run exactly like in mihon:
     /// `getClient()` → `newCall(request)` → `execute()`.
     ///
-    /// Extensions without decrypt interceptors simply return the raw bytes;
-    /// the request carries no extra headers beyond what the extension's
-    /// client and the registered host-header resolver add.
+    /// Build the request through the source's imageRequest so its Referer,
+    /// Origin and any source-specific headers reach image hosts too.
     pub fn image_data(&mut self, src: &Source, url: &str) -> Result<Vec<u8>, JvmError> {
         let client = self
             .ctx
             .invoke_on(src.inst, "getClient", "()Lokhttp3/OkHttpClient;", &[])?;
-        let cid = self.ctx.vm().ensure_class_by_desc("Lokhttp3/Request;")?;
-        let req = JValue::Obj(self.ctx.vm().arena.alloc(
-            cid,
+        let page_class = self
+            .ctx
+            .vm()
+            .ensure_class_by_desc("Leu/kanade/tachiyomi/source/model/Page;")?;
+        let page = JValue::Obj(self.ctx.vm().arena.alloc(
+            page_class,
             Vec::new(),
-            Some(Native::Request {
+            Some(Native::SPPage {
+                index: 0,
+                name: String::new(),
                 url: url.to_string(),
-                method: "GET".to_string(),
-                headers: Vec::new(),
-                body: None,
+                image_url: url.to_string(),
             }),
         ));
+        let mut req = self.ctx.invoke_on(
+            src.inst,
+            "imageRequest",
+            "(Leu/kanade/tachiyomi/source/model/Page;)Lokhttp3/Request;",
+            &[page],
+        )?;
+        // An image loaded from a chapter normally carries the source page as
+        // its Referer. Some extensions leave it unset, which makes image CDNs
+        // return an HTML hotlink-denial page. Keep any explicit source value.
+        let referer_name = self.ctx.vm().alloc_string("Referer");
+        let existing_referer = self.ctx.invoke_on(
+            req.as_obj(),
+            "header",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+            &[referer_name],
+        )?;
+        if existing_referer == JValue::Null {
+            if let Ok(JValue::Obj(base_id)) = self.ctx.invoke_on(
+                src.inst,
+                "getBaseUrl",
+                "()Ljava/lang/String;",
+                &[],
+            ) {
+                if let Some(base_url) = self.ctx.string_of(base_id) {
+                    if base_url.starts_with("https://") || base_url.starts_with("http://") {
+                        let builder = self.ctx.invoke_on(
+                            req.as_obj(),
+                            "newBuilder",
+                            "()Lokhttp3/Request$Builder;",
+                            &[],
+                        )?;
+                        let referer = self.ctx.vm().alloc_string(&format!(
+                            "{}/",
+                            base_url.trim_end_matches('/')
+                        ));
+                        self.ctx.invoke_on(
+                            builder.as_obj(),
+                            "header",
+                            "(Ljava/lang/String;Ljava/lang/String;)Lokhttp3/Request$Builder;",
+                            &[referer_name, referer],
+                        )?;
+                        req = self.ctx.invoke_on(
+                            builder.as_obj(),
+                            "build",
+                            "()Lokhttp3/Request;",
+                            &[],
+                        )?;
+                    }
+                }
+            }
+        }
         let call = self.ctx.invoke_on(
             client.as_obj(),
             "newCall",

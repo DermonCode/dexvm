@@ -743,8 +743,28 @@ fn match_result_get_value(vm: &mut Vm, args: &[JValue]) -> R {
 }
 
 fn match_result_destructured_to_list(vm: &mut Vm, args: &[JValue]) -> R {
-    let value = match_result_get_value(vm, args)?;
-    list_alloc(vm, vec![value])
+    let values = match payload(vm, args[0]) {
+        Some(Native::Matcher(ms)) => ms
+            .groups
+            .iter()
+            .skip(1)
+            .map(|group| match group {
+                Some((start, end)) => ms.text.get(*start..*end).unwrap_or("").to_string(),
+                None => String::new(),
+            })
+            .collect::<Vec<_>>(),
+        _ => return Err(npe(vm)),
+    };
+    let values = values.into_iter().map(|value| new_str(vm, &value)).collect();
+    list_alloc(vm, values)
+}
+
+fn match_result_get_destructured(vm: &mut Vm, args: &[JValue]) -> R {
+    let state = match payload(vm, args[0]) {
+        Some(Native::Matcher(ms)) => ms.clone(),
+        _ => return Err(npe(vm)),
+    };
+    alloc(vm, "Lkotlin/text/MatchResult$Destructured;", Native::Matcher(state))
 }
 
 /// `MatchResult.getGroupValues` — the whole match followed by every
@@ -1864,6 +1884,7 @@ pub(crate) const KOTLIN_TABLE: &[NativeEntry] = &[
     ne!("Lkotlin/text/CharsKt;", "titlecase", "(CLjava/util/Locale;)Ljava/lang/String;", false, charskt_titlecase),
     ne!("Lkotlin/text/MatchResult;", "getValue", "()Ljava/lang/String;", true, match_result_get_value),
     ne!("Lkotlin/text/MatchResult;", "getGroupValues", "()Ljava/util/List;", true, match_result_get_group_values),
+    ne!("Lkotlin/text/MatcherMatchResult;", "getDestructured", "()Lkotlin/text/MatchResult$Destructured;", true, match_result_get_destructured),
     ne!("Lkotlin/text/MatchResult$Destructured;", "toList", "()Ljava/util/List;", true, match_result_destructured_to_list),
     ne!("Lkotlin/text/MatchGroup;", "getValue", "()Ljava/lang/String;", true, match_group_get_value),
     ne!("Lkotlin/text/MatcherMatchResult;", "getValue", "()Ljava/lang/String;", true, match_result_get_value),

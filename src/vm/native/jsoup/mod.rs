@@ -193,6 +193,33 @@ fn jsoup_parse_string_default(vm: &mut Vm, args: &[JValue]) -> R {
     jsoup_parse_string(vm, &[args[0], base])
 }
 
+/// `Jsoup.parse(InputStream, charsetName, baseUri)` consumes an OkHttp body
+/// stream. Keep its current cursor and the supplied base URI, since callers
+/// such as Mangas.in read `Document.location()` after parsing.
+fn jsoup_parse_stream(vm: &mut Vm, args: &[JValue]) -> R {
+    let charset = if args[1].is_null_ref() {
+        String::from("UTF-8")
+    } else {
+        jstr(vm, args[1])?
+    };
+    let base = jstr(vm, args[2])?;
+    let Some(Native::ByteArrayInputStream { bytes, pos }) = payload_mut(vm, args[0]) else {
+        return Err(npe(vm));
+    };
+    let remaining = &bytes[*pos..];
+    let text = if charset.to_ascii_uppercase().contains("8859")
+        || charset.eq_ignore_ascii_case("LATIN1")
+    {
+        remaining.iter().map(|&byte| char::from(byte)).collect()
+    } else {
+        String::from_utf8_lossy(remaining).into_owned()
+    };
+    *pos = bytes.len();
+    let mut doc = JsoupDocRef::new(Document::from(text));
+    doc.base = Some(base);
+    alloc(vm, "Lorg/jsoup/nodes/Document;", Native::JsoupDoc(doc))
+}
+
 fn jsoup_parse_body_fragment(vm: &mut Vm, args: &[JValue]) -> R {
     let base = if args.len() > 1 {
         args[1]
@@ -1847,6 +1874,13 @@ pub(crate) fn elements_remove_first(vm: &mut Vm, args: &[JValue]) -> R {
 // ---------------------------------------------------------------------------
 
 pub(crate) const JSOUP_TABLE: &[NativeEntry] = &[
+    ne!(
+        "Lorg/jsoup/Jsoup;",
+        "parse",
+        "(Ljava/io/InputStream;Ljava/lang/String;Ljava/lang/String;)Lorg/jsoup/nodes/Document;",
+        false,
+        jsoup_parse_stream
+    ),
     ne!(
         "Lorg/jsoup/Jsoup;",
         "parse",

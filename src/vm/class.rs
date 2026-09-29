@@ -1918,6 +1918,17 @@ pub static SHIM_CLASSES: &[ShimDef] = &[
         &[],
         0
     ),
+    shim!(
+        "Lkotlin/jvm/internal/StringCompanionObject;",
+        Some("Ljava/lang/Object;"),
+        &[],
+        0,
+        [sdef!(
+            "INSTANCE",
+            "Lkotlin/jvm/internal/StringCompanionObject;",
+            ShimValue::Lazy(native::lazy_string_companion)
+        )]
+    ),
     // kotlinx.serialization JSON pipeline (cached filter lists, moetruyen)
     #[cfg(feature = "tachiyomi")]
     shim!(

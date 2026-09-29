@@ -986,6 +986,30 @@ pub(crate) fn dec_decode_long_element(vm: &mut Vm, args: &[JValue]) -> R {
     }))
 }
 
+/// `CompositeDecoder.decodeFloatElement(descriptor, index)`.
+pub(crate) fn dec_decode_float_element(vm: &mut Vm, args: &[JValue]) -> R {
+    let v = member_primitive(vm, args).unwrap_or(JsonVal::Int(0));
+    Ok(JValue::Float(match v {
+        JsonVal::Int(i) => i as f32,
+        JsonVal::Double(d) => d as f32,
+        JsonVal::Bool(b) => f32::from(u8::from(b)),
+        JsonVal::Str(s) => s.parse().unwrap_or(0.0),
+        _ => 0.0,
+    }))
+}
+
+/// `CompositeDecoder.decodeDoubleElement(descriptor, index)`.
+pub(crate) fn dec_decode_double_element(vm: &mut Vm, args: &[JValue]) -> R {
+    let v = member_primitive(vm, args).unwrap_or(JsonVal::Int(0));
+    Ok(JValue::Double(match v {
+        JsonVal::Int(i) => i as f64,
+        JsonVal::Double(d) => d,
+        JsonVal::Bool(b) => f64::from(u8::from(b)),
+        JsonVal::Str(s) => s.parse().unwrap_or(0.0),
+        _ => 0.0,
+    }))
+}
+
 /// `CompositeDecoder.decodeBooleanElement(descriptor, index)`.
 pub(crate) fn dec_decode_bool_element(vm: &mut Vm, args: &[JValue]) -> R {
     let v = member_primitive(vm, args).unwrap_or(JsonVal::Bool(false));
@@ -1105,6 +1129,38 @@ pub(crate) fn dec_decode_int(vm: &mut Vm, args: &[JValue]) -> R {
         _ => 0,
     };
     Ok(JValue::Int(v))
+}
+
+/// Top-level `Decoder.decodeFloat()`.
+pub(crate) fn dec_decode_float(vm: &mut Vm, args: &[JValue]) -> R {
+    let element = match payload(vm, args[0]) {
+        Some(Native::JsonDecoder { element, .. }) => *element,
+        _ => return Err(npe(vm)),
+    };
+    let v = match payload(vm, element) {
+        Some(Native::Json(JsonVal::Int(i))) => *i as f32,
+        Some(Native::Json(JsonVal::Double(d))) => *d as f32,
+        Some(Native::Json(JsonVal::Bool(b))) => f32::from(u8::from(*b)),
+        Some(Native::Json(JsonVal::Str(s))) => s.parse().unwrap_or(0.0),
+        _ => 0.0,
+    };
+    Ok(JValue::Float(v))
+}
+
+/// Top-level `Decoder.decodeDouble()`.
+pub(crate) fn dec_decode_double(vm: &mut Vm, args: &[JValue]) -> R {
+    let element = match payload(vm, args[0]) {
+        Some(Native::JsonDecoder { element, .. }) => *element,
+        _ => return Err(npe(vm)),
+    };
+    let v = match payload(vm, element) {
+        Some(Native::Json(JsonVal::Int(i))) => *i as f64,
+        Some(Native::Json(JsonVal::Double(d))) => *d,
+        Some(Native::Json(JsonVal::Bool(b))) => f64::from(u8::from(*b)),
+        Some(Native::Json(JsonVal::Str(s))) => s.parse().unwrap_or(0.0),
+        _ => 0.0,
+    };
+    Ok(JValue::Double(v))
 }
 
 // ---------------------------------------------------------------------------
@@ -2606,6 +2662,20 @@ pub(crate) const SERIALIZATION_TABLE: &[NativeEntry] = &[
     ),
     ne!(
         "Lkotlinx/serialization/json/internal/StreamingJsonDecoder;",
+        "decodeFloatElement",
+        "(Lkotlinx/serialization/descriptors/SerialDescriptor;I)F",
+        true,
+        dec_decode_float_element
+    ),
+    ne!(
+        "Lkotlinx/serialization/json/internal/StreamingJsonDecoder;",
+        "decodeDoubleElement",
+        "(Lkotlinx/serialization/descriptors/SerialDescriptor;I)D",
+        true,
+        dec_decode_double_element
+    ),
+    ne!(
+        "Lkotlinx/serialization/json/internal/StreamingJsonDecoder;",
         "decodeBooleanElement",
         "(Lkotlinx/serialization/descriptors/SerialDescriptor;I)Z",
         true,
@@ -2659,6 +2729,20 @@ pub(crate) const SERIALIZATION_TABLE: &[NativeEntry] = &[
         "()I",
         true,
         dec_decode_int
+    ),
+    ne!(
+        "Lkotlinx/serialization/json/internal/StreamingJsonDecoder;",
+        "decodeFloat",
+        "()F",
+        true,
+        dec_decode_float
+    ),
+    ne!(
+        "Lkotlinx/serialization/json/internal/StreamingJsonDecoder;",
+        "decodeDouble",
+        "()D",
+        true,
+        dec_decode_double
     ),
     ne!(
         "Lkotlinx/serialization/internal/PluginGeneratedSerialDescriptor;",

@@ -97,7 +97,25 @@ fn url_get_path(vm: &mut Vm, args: &[JValue]) -> R {
     Ok(new_str(vm, path.split(['?', '#']).next().unwrap_or("")))
 }
 
+fn url_open_stream(vm: &mut Vm, args: &[JValue]) -> R {
+    let key = match payload(vm, args[0]) {
+        Some(Native::URI(value)) => value.strip_prefix("resource:/").map(str::to_owned),
+        _ => None,
+    };
+    let Some(bytes) = key.and_then(|key| vm.resources.get(&key).cloned()) else {
+        return Err(iae(vm, "URL resource unavailable"));
+    };
+    alloc(vm, "Ljava/io/ByteArrayInputStream;", Native::ByteArrayInputStream { bytes, pos: 0 })
+}
+
 pub(crate) const TABLE: &[NativeEntry] = &[
+    ne!(
+        "Ljava/net/URL;",
+        "openStream",
+        "()Ljava/io/InputStream;",
+        true,
+        url_open_stream
+    ),
     ne!(
         "Ljava/net/URLEncoder;",
         "encode",

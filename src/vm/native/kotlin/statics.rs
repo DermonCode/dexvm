@@ -5,6 +5,9 @@ use crate::vm::native::*;
 pub(crate) fn duration_companion(vm: &mut Vm) -> JValue {
     opaque_inst(vm, "Lkotlin/time/Duration$Companion;")
 }
+pub(crate) fn string_companion(vm: &mut Vm) -> JValue {
+    opaque_inst(vm, "Lkotlin/jvm/internal/StringCompanionObject;")
+}
 pub(crate) fn duration_unit_seconds(vm: &mut Vm) -> JValue {
     opaque_inst(vm, "Lkotlin/time/DurationUnit;")
 }
