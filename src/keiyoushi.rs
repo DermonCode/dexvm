@@ -1130,12 +1130,15 @@ impl Keiyoushi {
             "(Leu/kanade/tachiyomi/source/model/Page;)Lokhttp3/Request;",
             &[page],
         )?;
+        let JValue::Obj(req_id) = req else {
+            return Err(JvmError::Resolution("imageRequest returned no request".into()));
+        };
         // An image loaded from a chapter normally carries the source page as
         // its Referer. Some extensions leave it unset, which makes image CDNs
         // return an HTML hotlink-denial page. Keep any explicit source value.
         let referer_name = self.ctx.vm().alloc_string("Referer");
         let existing_referer = self.ctx.invoke_on(
-            req.as_obj(),
+            req_id,
             "header",
             "(Ljava/lang/String;)Ljava/lang/String;",
             &[referer_name],
@@ -1150,7 +1153,7 @@ impl Keiyoushi {
                 if let Some(base_url) = self.ctx.string_of(base_id) {
                     if base_url.starts_with("https://") || base_url.starts_with("http://") {
                         let builder = self.ctx.invoke_on(
-                            req.as_obj(),
+                            req_id,
                             "newBuilder",
                             "()Lokhttp3/Request$Builder;",
                             &[],

@@ -180,6 +180,8 @@ pub enum PrimitiveSerializerKind {
     String,
     Int,
     Long,
+    Float,
+    Double,
 }
 
 /// protobuf wire-format value (kotlinx-serialization-protobuf shim).
@@ -371,10 +373,11 @@ pub enum Native {
     /// single-threaded, so acquire/tryAcquire never actually block.
     Semaphore(i32),
     /// java.util.zip.ZipInputStream: eagerly-extracted (name, content)
-    /// entries plus a cursor for `getNextEntry`.
+    /// entries plus cursors for the current entry and its bytes.
     ZipReader {
         entries: Vec<(String, Vec<u8>)>,
         idx: i32,
+        pos: usize,
     },
     /// java.util.zip.ZipEntry: just its name (index into the ZipReader that
     /// produced it isn't tracked — good enough for the metadata-only
@@ -1211,9 +1214,10 @@ impl Arena {
         self.objects.get_mut(id as usize)
     }
 
-    /// Returns a slot to the free list for reuse by a later [`Arena::alloc`].
-    pub(crate) fn reclaim(&mut self, id: u32) {
-        self.free.push(id);
+    /// Rebuilds the free list after a collection without duplicating slots.
+    pub(crate) fn reset_free(&mut self, ids: impl Iterator<Item = u32>) {
+        self.free.clear();
+        self.free.extend(ids);
     }
 
     pub fn live_count(&self) -> usize {

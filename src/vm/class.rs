@@ -2149,6 +2149,30 @@ pub static SHIM_CLASSES: &[ShimDef] = &[
     ),
     #[cfg(feature = "tachiyomi")]
     shim!(
+        "Lkotlinx/serialization/internal/FloatSerializer;",
+        Some("Ljava/lang/Object;"),
+        &["Lkotlinx/serialization/KSerializer;"],
+        0,
+        [sdef!(
+            "INSTANCE",
+            "Lkotlinx/serialization/internal/FloatSerializer;",
+            ShimValue::Lazy(native::lazy_float_serializer)
+        )]
+    ),
+    #[cfg(feature = "tachiyomi")]
+    shim!(
+        "Lkotlinx/serialization/internal/DoubleSerializer;",
+        Some("Ljava/lang/Object;"),
+        &["Lkotlinx/serialization/KSerializer;"],
+        0,
+        [sdef!(
+            "INSTANCE",
+            "Lkotlinx/serialization/internal/DoubleSerializer;",
+            ShimValue::Lazy(native::lazy_double_serializer)
+        )]
+    ),
+    #[cfg(feature = "tachiyomi")]
+    shim!(
         "Lcom/squareup/zstd/okio/OkioZstd;",
         Some("Ljava/lang/Object;"),
         &[],

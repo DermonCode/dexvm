@@ -256,6 +256,14 @@ fn json_get(vm: &mut Vm, args: &[JValue]) -> R {
     Ok(json_find(vm, args[0], &key)?.unwrap_or(JValue::Null))
 }
 
+fn json_remove(vm: &mut Vm, args: &[JValue]) -> R {
+    let key = jstr(vm, args[1])?;
+    let entries = json_obj_mut(vm, args[0])?;
+    Ok(entries.iter().position(|(name, _)| name == &key)
+        .map(|index| entries.remove(index).1)
+        .unwrap_or(JValue::Null))
+}
+
 fn json_get_string(vm: &mut Vm, args: &[JValue]) -> R {
     let key = jstr(vm, args[1])?;
     let value = json_find(vm, args[0], &key)?.ok_or_else(|| npe(vm))?;
@@ -630,7 +638,7 @@ pub(crate) const JSON_TABLE: &[NativeEntry] = &[
         "remove",
         "(Ljava/lang/String;)Ljava/lang/Object;",
         true,
-        json_get
+        json_remove
     ),
     ne!(
         "Lorg/json/JSONObject;",

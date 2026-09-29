@@ -37,24 +37,15 @@ pub struct AppManifest {
 }
 
 /// Errors produced while parsing an APK's manifest or resource table.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ManifestError {
     /// The container holds no `AndroidManifest.xml` (plain dex input).
+    #[error("no {0} in the container")]
     Missing(String),
     /// The binary stream is malformed.
+    #[error("malformed resource stream: {0}")]
     Parse(String),
 }
-
-impl std::fmt::Display for ManifestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ManifestError::Missing(what) => write!(f, "no {what} in the container"),
-            ManifestError::Parse(what) => write!(f, "malformed resource stream: {what}"),
-        }
-    }
-}
-
-impl std::error::Error for ManifestError {}
 
 // ---------------------------------------------------------------------------
 // Binary resource stream (`resources.arsc`)

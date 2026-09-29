@@ -32,6 +32,9 @@ fi
 export BASELINE
 
 GLUE="src/vm/native/mod.rs src/vm/native/java/mod.rs src/vm/native/java/lang/mod.rs src/vm/native/java/util/mod.rs src/vm/native/java/text/mod.rs src/vm/native/java/util/regex/mod.rs"
+# These shims now contain behavior maintained in the live tree. The baseline
+# split cannot regenerate their post-refactor resource and header handling.
+PRESERVED="src/vm/native/java/lang/class.rs src/vm/native/keiyoushi.rs"
 
 if [ "${1:-}" = "--check" ]; then
     OUT="$(mktemp -d)"
@@ -45,7 +48,7 @@ OUT="$OUT" python3 tools/split_lang.py
 OUT="$OUT" python3 tools/split_util.py
 OUT="$OUT" python3 tools/split_remaining.py
 
-for f in $GLUE; do
+for f in $GLUE $PRESERVED; do
     rel="${f#src/vm/native/}"
     mkdir -p "$(dirname "$OUT/$rel")"
     cp "$REPO/$f" "$OUT/$rel"

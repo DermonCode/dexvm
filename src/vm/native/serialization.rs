@@ -664,6 +664,12 @@ fn run_serializer(vm: &mut Vm, serializer: JValue, element: JValue, module: Opti
                     JsonVal::Str(v) => v.parse().unwrap_or_default(),
                     _ => 0,
                 }),
+                PrimitiveSerializerKind::Float => JValue::Float(
+                    decimal_value(&value).ok_or_else(|| iae(vm, "Invalid float value"))? as f32,
+                ),
+                PrimitiveSerializerKind::Double => JValue::Double(
+                    decimal_value(&value).ok_or_else(|| iae(vm, "Invalid double value"))?,
+                ),
             });
         }
         Some(Native::ArrayListSerializer { child }) => *child,
@@ -739,6 +745,8 @@ fn run_serializer_encode(
                 PrimitiveSerializerKind::String => JsonVal::Str(jstr(vm, value)?),
                 PrimitiveSerializerKind::Int => JsonVal::Int(i64::from(int_of(vm, value))),
                 PrimitiveSerializerKind::Long => JsonVal::Int(long_of(vm, value)),
+                PrimitiveSerializerKind::Float => JsonVal::Double(f64::from(float_of(vm, value))),
+                PrimitiveSerializerKind::Double => JsonVal::Double(double_of(vm, value)),
             });
         }
         Some(Native::ArrayListSerializer { child }) => {
@@ -986,28 +994,30 @@ pub(crate) fn dec_decode_long_element(vm: &mut Vm, args: &[JValue]) -> R {
     }))
 }
 
+/// Converts a JSON number or numeric string to a decimal value.
+fn decimal_value(value: &JsonVal) -> Option<f64> {
+    match value {
+        JsonVal::Int(value) => Some(*value as f64),
+        JsonVal::Double(value) => Some(*value),
+        JsonVal::Str(value) => value.parse().ok(),
+        _ => None,
+    }
+}
+
 /// `CompositeDecoder.decodeFloatElement(descriptor, index)`.
 pub(crate) fn dec_decode_float_element(vm: &mut Vm, args: &[JValue]) -> R {
-    let v = member_primitive(vm, args).unwrap_or(JsonVal::Int(0));
-    Ok(JValue::Float(match v {
-        JsonVal::Int(i) => i as f32,
-        JsonVal::Double(d) => d as f32,
-        JsonVal::Bool(b) => f32::from(u8::from(b)),
-        JsonVal::Str(s) => s.parse().unwrap_or(0.0),
-        _ => 0.0,
-    }))
+    let value = member_primitive(vm, args)
+        .and_then(|value| decimal_value(&value))
+        .ok_or_else(|| iae(vm, "Invalid float value"))?;
+    Ok(JValue::Float(value as f32))
 }
 
 /// `CompositeDecoder.decodeDoubleElement(descriptor, index)`.
 pub(crate) fn dec_decode_double_element(vm: &mut Vm, args: &[JValue]) -> R {
-    let v = member_primitive(vm, args).unwrap_or(JsonVal::Int(0));
-    Ok(JValue::Double(match v {
-        JsonVal::Int(i) => i as f64,
-        JsonVal::Double(d) => d,
-        JsonVal::Bool(b) => f64::from(u8::from(b)),
-        JsonVal::Str(s) => s.parse().unwrap_or(0.0),
-        _ => 0.0,
-    }))
+    let value = member_primitive(vm, args)
+        .and_then(|value| decimal_value(&value))
+        .ok_or_else(|| iae(vm, "Invalid double value"))?;
+    Ok(JValue::Double(value))
 }
 
 /// `CompositeDecoder.decodeBooleanElement(descriptor, index)`.
@@ -1137,14 +1147,11 @@ pub(crate) fn dec_decode_float(vm: &mut Vm, args: &[JValue]) -> R {
         Some(Native::JsonDecoder { element, .. }) => *element,
         _ => return Err(npe(vm)),
     };
-    let v = match payload(vm, element) {
-        Some(Native::Json(JsonVal::Int(i))) => *i as f32,
-        Some(Native::Json(JsonVal::Double(d))) => *d as f32,
-        Some(Native::Json(JsonVal::Bool(b))) => f32::from(u8::from(*b)),
-        Some(Native::Json(JsonVal::Str(s))) => s.parse().unwrap_or(0.0),
-        _ => 0.0,
-    };
-    Ok(JValue::Float(v))
+    let value = match payload(vm, element) {
+        Some(Native::Json(value)) => decimal_value(value),
+        _ => None,
+    }.ok_or_else(|| iae(vm, "Invalid float value"))?;
+    Ok(JValue::Float(value as f32))
 }
 
 /// Top-level `Decoder.decodeDouble()`.
@@ -1153,14 +1160,11 @@ pub(crate) fn dec_decode_double(vm: &mut Vm, args: &[JValue]) -> R {
         Some(Native::JsonDecoder { element, .. }) => *element,
         _ => return Err(npe(vm)),
     };
-    let v = match payload(vm, element) {
-        Some(Native::Json(JsonVal::Int(i))) => *i as f64,
-        Some(Native::Json(JsonVal::Double(d))) => *d,
-        Some(Native::Json(JsonVal::Bool(b))) => f64::from(u8::from(*b)),
-        Some(Native::Json(JsonVal::Str(s))) => s.parse().unwrap_or(0.0),
-        _ => 0.0,
-    };
-    Ok(JValue::Double(v))
+    let value = match payload(vm, element) {
+        Some(Native::Json(value)) => decimal_value(value),
+        _ => None,
+    }.ok_or_else(|| iae(vm, "Invalid double value"))?;
+    Ok(JValue::Double(value))
 }
 
 // ---------------------------------------------------------------------------
@@ -1316,6 +1320,22 @@ pub(crate) fn lazy_long_serializer(vm: &mut Vm) -> JValue {
         vm,
         "Lkotlinx/serialization/internal/LongSerializer;",
         PrimitiveSerializerKind::Long,
+    )
+}
+
+pub(crate) fn lazy_float_serializer(vm: &mut Vm) -> JValue {
+    lazy_primitive_serializer(
+        vm,
+        "Lkotlinx/serialization/internal/FloatSerializer;",
+        PrimitiveSerializerKind::Float,
+    )
+}
+
+pub(crate) fn lazy_double_serializer(vm: &mut Vm) -> JValue {
+    lazy_primitive_serializer(
+        vm,
+        "Lkotlinx/serialization/internal/DoubleSerializer;",
+        PrimitiveSerializerKind::Double,
     )
 }
 
@@ -2001,6 +2021,12 @@ fn primitive_serializer_deserialize(vm: &mut Vm, args: &[JValue]) -> R {
             JsonVal::Str(v) => v.parse().unwrap_or_default(),
             _ => 0,
         }),
+        PrimitiveSerializerKind::Float => JValue::Float(
+            decimal_value(&value).ok_or_else(|| iae(vm, "Invalid float value"))? as f32,
+        ),
+        PrimitiveSerializerKind::Double => JValue::Double(
+            decimal_value(&value).ok_or_else(|| iae(vm, "Invalid double value"))?,
+        ),
     })
 }
 
@@ -2806,6 +2832,8 @@ pub(crate) const SERIALIZATION_TABLE: &[NativeEntry] = &[
     ne!("Lkotlinx/serialization/internal/StringSerializer;", "deserialize", "(Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;", true, primitive_serializer_deserialize),
     ne!("Lkotlinx/serialization/internal/IntSerializer;", "deserialize", "(Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;", true, primitive_serializer_deserialize),
     ne!("Lkotlinx/serialization/internal/LongSerializer;", "deserialize", "(Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;", true, primitive_serializer_deserialize),
+    ne!("Lkotlinx/serialization/internal/FloatSerializer;", "deserialize", "(Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;", true, primitive_serializer_deserialize),
+    ne!("Lkotlinx/serialization/internal/DoubleSerializer;", "deserialize", "(Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;", true, primitive_serializer_deserialize),
     ne!("Lkotlinx/serialization/internal/LinkedHashMapSerializer;", "getDescriptor", "()Lkotlinx/serialization/descriptors/SerialDescriptor;", true, linked_hash_map_descriptor),
     ne!("Lkotlinx/serialization/json/JsonObject$Companion;", "serializer", "()Lkotlinx/serialization/KSerializer;", true, json_element_serializer_marker),
     ne!("Lkotlinx/serialization/json/JsonArray$Companion;", "serializer", "()Lkotlinx/serialization/KSerializer;", true, json_element_serializer_marker),

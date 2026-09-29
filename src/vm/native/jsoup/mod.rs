@@ -203,18 +203,15 @@ fn jsoup_parse_stream(vm: &mut Vm, args: &[JValue]) -> R {
         jstr(vm, args[1])?
     };
     let base = jstr(vm, args[2])?;
-    let Some(Native::ByteArrayInputStream { bytes, pos }) = payload_mut(vm, args[0]) else {
-        return Err(npe(vm));
+    let remaining = match payload(vm, args[0]) {
+        Some(Native::ByteArrayInputStream { bytes, pos }) => bytes[*pos..].to_vec(),
+        _ => return Err(npe(vm)),
     };
-    let remaining = &bytes[*pos..];
-    let text = if charset.to_ascii_uppercase().contains("8859")
-        || charset.eq_ignore_ascii_case("LATIN1")
-    {
-        remaining.iter().map(|&byte| char::from(byte)).collect()
-    } else {
-        String::from_utf8_lossy(remaining).into_owned()
-    };
-    *pos = bytes.len();
+    let text = decode_charset(&remaining, &charset)
+        .ok_or_else(|| iae(vm, format!("Unsupported charset: {charset}")))?;
+    if let Some(Native::ByteArrayInputStream { bytes, pos }) = payload_mut(vm, args[0]) {
+        *pos = bytes.len();
+    }
     let mut doc = JsoupDocRef::new(Document::from(text));
     doc.base = Some(base);
     alloc(vm, "Lorg/jsoup/nodes/Document;", Native::JsoupDoc(doc))

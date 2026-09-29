@@ -1,8 +1,7 @@
 //! Low-level readers for the DEX binary format.
 
-use std::fmt;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("dex error at 0x{off:x}: {msg}")]
 pub struct DexError {
     pub msg: String,
     pub off: usize,
@@ -16,14 +15,6 @@ impl DexError {
         }
     }
 }
-
-impl fmt::Display for DexError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "dex error at 0x{:x}: {}", self.off, self.msg)
-    }
-}
-
-impl std::error::Error for DexError {}
 
 /// Bounds-checked cursor over the raw DEX bytes.
 pub struct Cursor<'a> {
