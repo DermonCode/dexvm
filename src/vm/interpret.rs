@@ -781,7 +781,7 @@ impl Vm {
                 Flow::Next(0)
             }
             Insn::ConstHigh16(d, lit) => {
-                f.regs[*d as usize] = JValue::Int(*lit);
+                f.regs[*d as usize] = JValue::Int(lit.wrapping_shl(16));
                 Flow::Next(0)
             }
             Insn::ConstWide16(d, lit) | Insn::ConstWide32(d, lit) => {
@@ -793,7 +793,7 @@ impl Vm {
                 Flow::Next(0)
             }
             Insn::ConstWideHigh16(d, lit) => {
-                f.regs[*d as usize] = JValue::Long(*lit);
+                f.regs[*d as usize] = JValue::Long(i64::from(lit.wrapping_shl(16) as u32) << 32);
                 Flow::Next(0)
             }
             Insn::ConstString(d, str_idx) | Insn::ConstStringJumbo(d, str_idx) => {

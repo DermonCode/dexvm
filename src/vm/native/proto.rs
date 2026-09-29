@@ -491,45 +491,8 @@ fn proto_list_deserialize_inner(
         }
     }
 
-    let packed_kind = match payload(vm, child_serializer) {
-        Some(Native::PrimitiveSerializer(kind)) => Some(*kind),
-        _ => None,
-    };
-    let mut expanded = Vec::new();
-    for item in items {
-        if let (WireValue::Bytes(bytes), Some(kind)) = (&item, packed_kind) {
-            if kind != crate::vm::object::PrimitiveSerializerKind::String {
-                let mut offset = 0;
-                while offset < bytes.len() {
-                    let (value, size) = match kind {
-                        crate::vm::object::PrimitiveSerializerKind::Int
-                        | crate::vm::object::PrimitiveSerializerKind::Long => {
-                            let (value, size) = read_varint(bytes, offset)
-                                .ok_or_else(|| iae(vm, "Invalid packed protobuf number"))?;
-                            (WireValue::Varint(value as i64), size)
-                        }
-                        crate::vm::object::PrimitiveSerializerKind::Float => {
-                            let chunk = bytes.get(offset..offset + 4)
-                                .ok_or_else(|| iae(vm, "Invalid packed protobuf float"))?;
-                            (WireValue::Fixed32(u32::from_le_bytes(chunk.try_into().unwrap())), 4)
-                        }
-                        crate::vm::object::PrimitiveSerializerKind::Double => {
-                            let chunk = bytes.get(offset..offset + 8)
-                                .ok_or_else(|| iae(vm, "Invalid packed protobuf double"))?;
-                            (WireValue::Fixed64(u64::from_le_bytes(chunk.try_into().unwrap())), 8)
-                        }
-                        crate::vm::object::PrimitiveSerializerKind::String => unreachable!(),
-                    };
-                    expanded.push(value);
-                    offset += size;
-                }
-                continue;
-            }
-        }
-        expanded.push(item);
-    }
-    let mut out: Vec<JValue> = Vec::with_capacity(expanded.len());
-    for v in &expanded {
+    let mut out: Vec<JValue> = Vec::with_capacity(items.len());
+    for v in &items {
         out.push(wire_value_as(vm, v, child_serializer)?);
     }
     alloc(vm, "Ljava/util/ArrayList;", Native::List(out))
@@ -562,8 +525,6 @@ fn wire_value_as(vm: &mut Vm, v: &WireValue, serializer: JValue) -> PR {
                 },
                 crate::vm::object::PrimitiveSerializerKind::Int => JValue::Int(wire_to_int(v)),
                 crate::vm::object::PrimitiveSerializerKind::Long => JValue::Long(wire_to_long(v)),
-                crate::vm::object::PrimitiveSerializerKind::Float => JValue::Float(wire_to_float(v)),
-                crate::vm::object::PrimitiveSerializerKind::Double => JValue::Double(wire_to_double(v)),
             });
         }
         _ => {}

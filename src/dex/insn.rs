@@ -285,7 +285,7 @@ pub fn decode(insns: &[u16], pc: usize) -> Result<(Insn, usize), DexError> {
         0x1d => Ok((Insn::MonitorEnter(a8), pc + 1)),
         0x1e => Ok((Insn::MonitorExit(a8), pc + 1)),
         0x1f => Ok((Insn::CheckCast(a8, u32::from(w1()?)), pc + 2)),
-        0x20 => Ok((Insn::InstanceOf(a4, b4, u32::from(w1()?)), pc + 2)),
+        0x20 => Ok((Insn::InstanceOf(a4, b4, u32::from(w1()? & 0xff)), pc + 2)),
         0x21 => Ok((Insn::ArrayLength(a4, b4), pc + 1)),
         0x22 => Ok((Insn::NewInstance(a8, u32::from(w1()?)), pc + 2)),
         0x23 => Ok((Insn::NewArray(a4, b4, u32::from(w1()?)), pc + 2)),

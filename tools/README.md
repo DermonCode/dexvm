@@ -16,9 +16,6 @@ native tables into one file per Java class, each registering its own
   `java/mod.rs`, `java/lang/mod.rs`, `java/util/mod.rs` (also holds the shared
   `coll_elems` / `list_alloc` / `set_alloc` helpers), `java/text/mod.rs`,
   `java/util/regex/mod.rs`.
-- `java/lang/class.rs` and `keiyoushi.rs` are also maintained in the live
-  tree. `regenerate.sh` copies them after the historical baseline split so
-  resource lookup and extension header dispatch are preserved.
 
 ## Regenerating the leaf files
 

@@ -1069,11 +1069,13 @@ impl Vm {
                 seed(*r, &mut marks, &mut stack);
             }
         }
-        let before = self.arena.live_count();
-        self.arena.reset_free(
-            marks.iter().enumerate().filter(|(_, marked)| !**marked).map(|(id, _)| id as u32),
-        );
-        let freed = before.saturating_sub(self.arena.live_count());
+        let mut freed = 0;
+        for (id, &marked) in marks.iter().enumerate().take(n) {
+            if !marked {
+                self.arena.reclaim(id as u32);
+                freed += 1;
+            }
+        }
         self.monitors.retain(|id, _| marks[*id as usize]);
         freed
     }

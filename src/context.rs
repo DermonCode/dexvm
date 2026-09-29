@@ -57,21 +57,30 @@ pub struct SettingDefinition {
 }
 
 /// Errors produced while constructing a [`Context`] from bytes or a file.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum ContextError {
     /// The container is not a valid zip/apk (or no `classes*.dex` entry).
-    #[error("bad archive: {0}")]
     BadArchive(String),
     /// The dex container failed to parse.
-    #[error("dex error: {0}")]
     Dex(String),
     /// The virtual machine failed to boot.
-    #[error("vm error: {0}")]
     Jvm(JvmError),
     /// Reading the input file failed.
-    #[error("io error: {0}")]
     Io(std::io::Error),
 }
+
+impl std::fmt::Display for ContextError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ContextError::BadArchive(m) => write!(f, "bad archive: {m}"),
+            ContextError::Dex(m) => write!(f, "dex error: {m}"),
+            ContextError::Jvm(e) => write!(f, "vm error: {e}"),
+            ContextError::Io(e) => write!(f, "io error: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for ContextError {}
 
 impl From<JvmError> for ContextError {
     fn from(e: JvmError) -> Self {

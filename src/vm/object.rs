@@ -373,11 +373,10 @@ pub enum Native {
     /// single-threaded, so acquire/tryAcquire never actually block.
     Semaphore(i32),
     /// java.util.zip.ZipInputStream: eagerly-extracted (name, content)
-    /// entries plus cursors for the current entry and its bytes.
+    /// entries plus a cursor for `getNextEntry`.
     ZipReader {
         entries: Vec<(String, Vec<u8>)>,
         idx: i32,
-        pos: usize,
     },
     /// java.util.zip.ZipEntry: just its name (index into the ZipReader that
     /// produced it isn't tracked — good enough for the metadata-only
@@ -1214,10 +1213,9 @@ impl Arena {
         self.objects.get_mut(id as usize)
     }
 
-    /// Rebuilds the free list after a collection without duplicating slots.
-    pub(crate) fn reset_free(&mut self, ids: impl Iterator<Item = u32>) {
-        self.free.clear();
-        self.free.extend(ids);
+    /// Returns a slot to the free list for reuse by a later [`Arena::alloc`].
+    pub(crate) fn reclaim(&mut self, id: u32) {
+        self.free.push(id);
     }
 
     pub fn live_count(&self) -> usize {

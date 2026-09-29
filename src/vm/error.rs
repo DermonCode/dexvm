@@ -1,33 +1,44 @@
 //! VM errors: fatal (abort run) vs throwable (normal JVM exception).
 
+use std::fmt;
+
 use crate::dex::read::DexError;
 use crate::vm::value::JValue;
 
 /// A fatal VM error. Aborts the current execution run.
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, Clone)]
 pub enum JvmError {
     /// A Java exception object (arena id) was thrown and not caught.
-    #[error("uncaught java exception")]
     Uncaught(u32),
     /// DEX/class resolution problem.
-    #[error("resolution error: {0}")]
     Resolution(String),
     /// Instruction decode problem.
-    #[error("decode error: {0}")]
     Decode(String),
     /// Instruction budget exhausted (infinite-loop guard).
-    #[error("instruction budget exceeded")]
     BudgetExceeded,
     /// Stack depth limit hit.
-    #[error("stack overflow")]
     StackOverflow,
     /// System.exit(code)
-    #[error("System.exit({0})")]
     Exit(i32),
     /// Everything else.
-    #[error("fatal: {0}")]
     Fatal(String),
 }
+
+impl fmt::Display for JvmError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JvmError::Uncaught(_) => write!(f, "uncaught java exception"),
+            JvmError::Resolution(m) => write!(f, "resolution error: {m}"),
+            JvmError::Decode(m) => write!(f, "decode error: {m}"),
+            JvmError::BudgetExceeded => write!(f, "instruction budget exceeded"),
+            JvmError::StackOverflow => write!(f, "stack overflow"),
+            JvmError::Exit(c) => write!(f, "System.exit({c})"),
+            JvmError::Fatal(m) => write!(f, "fatal: {m}"),
+        }
+    }
+}
+
+impl std::error::Error for JvmError {}
 
 impl From<DexError> for JvmError {
     fn from(e: DexError) -> Self {
