@@ -34,6 +34,7 @@ pub(crate) fn normalize_charset(name: &str) -> Option<String> {
         "UTF-16LE" | "UTF16LE" | "UTF_16LE" => "UTF-16LE",
         "UTF-16BE" | "UTF16BE" | "UTF_16BE" => "UTF-16BE",
         "UTF-32" | "UTF32" | "UTF_32" => "UTF-32",
+        "WINDOWS-1252" | "WINDOWS1252" | "CP1252" => "WINDOWS-1252",
         "ISO-8859-1" | "ISO8859-1" | "ISO_8859-1" | "ISO8859_1" | "LATIN1" | "L1" | "8859-1"
         | "CP819" => "ISO-8859-1",
         _ => {

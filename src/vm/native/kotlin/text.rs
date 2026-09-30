@@ -192,13 +192,6 @@ fn match_groups(c: &fancy_regex::Captures<'_, String>) -> Vec<Option<(usize, usi
     for i in 0..c.len() {
         groups.push(c.get(i).map(|m| (m.start(), m.end())));
     }
-    // The VM path stores an extra pseudo group 0 (the whole match) before
-    // the real group 0; drop the duplicate so the list lines up with Kotlin
-    // `MatchResult.groupValues` (index 0 = whole match, then one entry per
-    // capturing group).
-    if groups.len() >= 2 && groups[0].is_some() && groups[1] == groups[0] {
-        groups.remove(1);
-    }
     groups
 }
 

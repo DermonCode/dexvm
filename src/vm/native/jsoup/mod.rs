@@ -198,16 +198,34 @@ fn jsoup_parse_string_default(vm: &mut Vm, args: &[JValue]) -> R {
 /// such as Mangas.in read `Document.location()` after parsing.
 fn jsoup_parse_stream(vm: &mut Vm, args: &[JValue]) -> R {
     let charset = if args[1].is_null_ref() {
-        String::from("UTF-8")
+        None
     } else {
-        jstr(vm, args[1])?
+        Some(jstr(vm, args[1])?)
     };
     let base = jstr(vm, args[2])?;
     let Some(Native::ByteArrayInputStream { bytes, pos }) = payload_mut(vm, args[0]) else {
         return Err(npe(vm));
     };
     let remaining = &bytes[*pos..];
-    let text = if charset.to_ascii_uppercase().contains("8859")
+    let (charset, remaining) = match charset.as_deref() {
+        None if remaining.starts_with(&[0xFF, 0xFE]) => ("UTF-16LE", &remaining[2..]),
+        None if remaining.starts_with(&[0xFE, 0xFF]) => ("UTF-16BE", &remaining[2..]),
+        None if remaining.starts_with(&[0xEF, 0xBB, 0xBF]) => ("UTF-8", &remaining[3..]),
+        Some(charset) => (charset, remaining),
+        None => ("UTF-8", remaining),
+    };
+    let text = if charset.eq_ignore_ascii_case("UTF-16LE")
+        || charset.eq_ignore_ascii_case("UTF-16BE")
+    {
+        let units = remaining.chunks_exact(2).map(|pair| {
+            if charset.eq_ignore_ascii_case("UTF-16LE") {
+                u16::from_le_bytes([pair[0], pair[1]])
+            } else {
+                u16::from_be_bytes([pair[0], pair[1]])
+            }
+        });
+        String::from_utf16_lossy(&units.collect::<Vec<_>>())
+    } else if charset.to_ascii_uppercase().contains("8859")
         || charset.eq_ignore_ascii_case("LATIN1")
     {
         remaining.iter().map(|&byte| char::from(byte)).collect()
