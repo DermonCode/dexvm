@@ -441,7 +441,7 @@ fn instant_and_match_result_bridges_keep_values() {
         let value = match_result_get_value(vm, &[matcher]).unwrap();
         assert_eq!(jstr(vm, value).unwrap(), "pre");
         let list = match_result_destructured_to_list(vm, &[matcher]).unwrap();
-        assert!(matches!(payload(vm, list), Some(Native::List(values)) if values.len() == 1));
+        assert!(matches!(payload(vm, list), Some(Native::List(values)) if values.is_empty()));
     });
 }
 

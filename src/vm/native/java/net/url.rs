@@ -3,9 +3,8 @@
 use crate::vm::native::*;
 
 const WINDOWS_1252: [char; 32] = [
-    '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8D}',
-    'Ž', '\u{8F}', '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›',
-    'œ', '\u{9D}', 'ž', 'Ÿ',
+    '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8D}', 'Ž', '\u{8F}',
+    '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9D}', 'ž', 'Ÿ',
 ];
 
 fn form_bytes(value: &str, charset: &str) -> Vec<u8> {
@@ -20,10 +19,7 @@ fn form_bytes(value: &str, charset: &str) -> Vec<u8> {
             }
             bytes
         }
-        "UTF-16LE" => value
-            .encode_utf16()
-            .flat_map(u16::to_le_bytes)
-            .collect(),
+        "UTF-16LE" => value.encode_utf16().flat_map(u16::to_le_bytes).collect(),
         "UTF-32" => {
             let mut bytes = vec![0, 0, 0xFE, 0xFF];
             for ch in value.chars() {
@@ -61,7 +57,7 @@ fn form_text(bytes: &[u8], charset: &str) -> String {
                 "UTF-16LE" => (true, bytes),
                 _ => (false, bytes),
             };
-            let units = bytes.chunks_exact(2).map(|pair| {
+            let units = bytes.as_chunks::<2>().0.iter().map(|pair| {
                 if little_endian {
                     u16::from_le_bytes([pair[0], pair[1]])
                 } else {
@@ -73,7 +69,9 @@ fn form_text(bytes: &[u8], charset: &str) -> String {
         "UTF-32" => {
             let bytes = bytes.strip_prefix(&[0, 0, 0xFE, 0xFF]).unwrap_or(bytes);
             bytes
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|part| {
                     char::from_u32(u32::from_be_bytes([part[0], part[1], part[2], part[3]]))
                         .unwrap_or('\u{FFFD}')
@@ -83,7 +81,13 @@ fn form_text(bytes: &[u8], charset: &str) -> String {
         "ISO-8859-1" => bytes.iter().map(|&byte| char::from(byte)).collect(),
         "US-ASCII" => bytes
             .iter()
-            .map(|&byte| if byte <= 0x7F { char::from(byte) } else { '\u{FFFD}' })
+            .map(|&byte| {
+                if byte <= 0x7F {
+                    char::from(byte)
+                } else {
+                    '\u{FFFD}'
+                }
+            })
             .collect(),
         "WINDOWS-1252" => bytes
             .iter()

@@ -214,24 +214,23 @@ fn jsoup_parse_stream(vm: &mut Vm, args: &[JValue]) -> R {
         Some(charset) => (charset, remaining),
         None => ("UTF-8", remaining),
     };
-    let text = if charset.eq_ignore_ascii_case("UTF-16LE")
-        || charset.eq_ignore_ascii_case("UTF-16BE")
-    {
-        let units = remaining.chunks_exact(2).map(|pair| {
-            if charset.eq_ignore_ascii_case("UTF-16LE") {
-                u16::from_le_bytes([pair[0], pair[1]])
-            } else {
-                u16::from_be_bytes([pair[0], pair[1]])
-            }
-        });
-        String::from_utf16_lossy(&units.collect::<Vec<_>>())
-    } else if charset.to_ascii_uppercase().contains("8859")
-        || charset.eq_ignore_ascii_case("LATIN1")
-    {
-        remaining.iter().map(|&byte| char::from(byte)).collect()
-    } else {
-        String::from_utf8_lossy(remaining).into_owned()
-    };
+    let text =
+        if charset.eq_ignore_ascii_case("UTF-16LE") || charset.eq_ignore_ascii_case("UTF-16BE") {
+            let units = remaining.as_chunks::<2>().0.iter().map(|pair| {
+                if charset.eq_ignore_ascii_case("UTF-16LE") {
+                    u16::from_le_bytes([pair[0], pair[1]])
+                } else {
+                    u16::from_be_bytes([pair[0], pair[1]])
+                }
+            });
+            String::from_utf16_lossy(&units.collect::<Vec<_>>())
+        } else if charset.to_ascii_uppercase().contains("8859")
+            || charset.eq_ignore_ascii_case("LATIN1")
+        {
+            remaining.iter().map(|&byte| char::from(byte)).collect()
+        } else {
+            String::from_utf8_lossy(remaining).into_owned()
+        };
     *pos = bytes.len();
     let mut doc = JsoupDocRef::new(Document::from(text));
     doc.base = Some(base);
