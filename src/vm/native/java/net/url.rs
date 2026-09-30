@@ -220,7 +220,11 @@ fn url_open_stream(vm: &mut Vm, args: &[JValue]) -> R {
     let Some(bytes) = key.and_then(|key| vm.resources.get(&key).cloned()) else {
         return Err(iae(vm, "URL resource unavailable"));
     };
-    alloc(vm, "Ljava/io/ByteArrayInputStream;", Native::ByteArrayInputStream { bytes, pos: 0 })
+    alloc(
+        vm,
+        "Ljava/io/ByteArrayInputStream;",
+        Native::ByteArrayInputStream { bytes, pos: 0 },
+    )
 }
 
 pub(crate) const TABLE: &[NativeEntry] = &[

@@ -116,7 +116,7 @@ fn imgx_gcm_payload(key: &[u8; 32], iv: &[u8; 12], plain: &[u8]) -> Vec<u8> {
     let cipher = Aes256Gcm::new_from_slice(key).unwrap();
     let ct = cipher
         .encrypt(
-            Nonce::from_slice(iv),
+            &Nonce::from(*iv),
             Payload {
                 msg: plain,
                 aad: aad.as_bytes(),

@@ -1150,7 +1150,8 @@ pub(crate) fn dec_decode_float(vm: &mut Vm, args: &[JValue]) -> R {
     let value = match payload(vm, element) {
         Some(Native::Json(value)) => decimal_value(value),
         _ => None,
-    }.ok_or_else(|| iae(vm, "Invalid float value"))?;
+    }
+    .ok_or_else(|| iae(vm, "Invalid float value"))?;
     Ok(JValue::Float(value as f32))
 }
 
@@ -1163,7 +1164,8 @@ pub(crate) fn dec_decode_double(vm: &mut Vm, args: &[JValue]) -> R {
     let value = match payload(vm, element) {
         Some(Native::Json(value)) => decimal_value(value),
         _ => None,
-    }.ok_or_else(|| iae(vm, "Invalid double value"))?;
+    }
+    .ok_or_else(|| iae(vm, "Invalid double value"))?;
     Ok(JValue::Double(value))
 }
 
@@ -1425,9 +1427,7 @@ pub(crate) fn array_list_serializer_init(vm: &mut Vm, args: &[JValue]) -> R {
 pub(crate) fn array_list_serializer_deserialize(vm: &mut Vm, args: &[JValue]) -> R {
     match payload(vm, args[1]) {
         Some(Native::JsonDecoder {
-            element,
-            module,
-            ..
+            element, module, ..
         }) => run_serializer(vm, args[0], *element, *module),
         // protobuf: consume the repeated field's consecutive wire entries.
         Some(Native::ProtoDecoder { .. }) => {
@@ -1437,7 +1437,7 @@ pub(crate) fn array_list_serializer_deserialize(vm: &mut Vm, args: &[JValue]) ->
             };
             crate::vm::native::proto::proto_list_deserialize(vm, args[1], child)
         }
-        _ => return Err(npe(vm)),
+        _ => Err(npe(vm)),
     }
 }
 
@@ -2024,9 +2024,9 @@ fn primitive_serializer_deserialize(vm: &mut Vm, args: &[JValue]) -> R {
         PrimitiveSerializerKind::Float => JValue::Float(
             decimal_value(&value).ok_or_else(|| iae(vm, "Invalid float value"))? as f32,
         ),
-        PrimitiveSerializerKind::Double => JValue::Double(
-            decimal_value(&value).ok_or_else(|| iae(vm, "Invalid double value"))?,
-        ),
+        PrimitiveSerializerKind::Double => {
+            JValue::Double(decimal_value(&value).ok_or_else(|| iae(vm, "Invalid double value"))?)
+        }
     })
 }
 

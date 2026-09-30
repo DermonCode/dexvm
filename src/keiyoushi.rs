@@ -450,11 +450,7 @@ impl Keiyoushi {
             Err(e) => return Err(e),
         };
 
-        let (values, error) = match self
-            .ctx
-            .vm()
-            .payload_of(ob)
-        {
+        let (values, error) = match self.ctx.vm().payload_of(ob) {
             Some(Native::RxObservable { values, error, .. }) => (values.clone(), error),
             _ => return Ok(None),
         };
@@ -1131,7 +1127,9 @@ impl Keiyoushi {
             &[page],
         )?;
         let JValue::Obj(req_id) = req else {
-            return Err(JvmError::Resolution("imageRequest returned no request".into()));
+            return Err(JvmError::Resolution(
+                "imageRequest returned no request".into(),
+            ));
         };
         // An image loaded from a chapter normally carries the source page as
         // its Referer. Some extensions leave it unset, which makes image CDNs
@@ -1144,12 +1142,10 @@ impl Keiyoushi {
             &[referer_name],
         )?;
         if existing_referer == JValue::Null {
-            if let Ok(JValue::Obj(base_id)) = self.ctx.invoke_on(
-                src.inst,
-                "getBaseUrl",
-                "()Ljava/lang/String;",
-                &[],
-            ) {
+            if let Ok(JValue::Obj(base_id)) =
+                self.ctx
+                    .invoke_on(src.inst, "getBaseUrl", "()Ljava/lang/String;", &[])
+            {
                 if let Some(base_url) = self.ctx.string_of(base_id) {
                     if base_url.starts_with("https://") || base_url.starts_with("http://") {
                         let builder = self.ctx.invoke_on(
@@ -1158,10 +1154,10 @@ impl Keiyoushi {
                             "()Lokhttp3/Request$Builder;",
                             &[],
                         )?;
-                        let referer = self.ctx.vm().alloc_string(&format!(
-                            "{}/",
-                            base_url.trim_end_matches('/')
-                        ));
+                        let referer = self
+                            .ctx
+                            .vm()
+                            .alloc_string(&format!("{}/", base_url.trim_end_matches('/')));
                         self.ctx.invoke_on(
                             builder.as_obj(),
                             "header",

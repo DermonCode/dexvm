@@ -39,7 +39,7 @@ fn group_integer(digits: &str) -> String {
     let bytes = digits.as_bytes();
     let mut out = String::with_capacity(digits.len() + digits.len() / 3);
     for (i, b) in bytes.iter().enumerate() {
-        if i > 0 && (bytes.len() - i) % 3 == 0 {
+        if i > 0 && (bytes.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(*b as char);
@@ -149,7 +149,7 @@ mod tests {
     fn formats_grouping_and_fraction_digits() {
         assert_eq!(format_decimal("#,##0.00", 1234.5), "1,234.50");
         assert_eq!(format_decimal("0.##", 3.0), "3");
-        assert_eq!(format_decimal("0.##", 3.14159), "3.14");
+        assert_eq!(format_decimal("0.##", std::f64::consts::PI), "3.14");
         assert_eq!(format_decimal("#,##0.###", -1234567.891), "-1,234,567.891");
     }
 }

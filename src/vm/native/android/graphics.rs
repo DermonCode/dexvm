@@ -259,7 +259,7 @@ fn png_decoded_zune(bytes: &[u8]) -> Result<(u32, u32, Vec<u8>), String> {
         Some(zune_png::zune_core::colorspace::ColorSpace::RGBA) => rgba,
         Some(zune_png::zune_core::colorspace::ColorSpace::LumaA) => {
             let mut out = Vec::with_capacity(rgba.len() * 2);
-            for c in rgba.chunks_exact(2) {
+            for c in rgba.as_chunks::<2>().0 {
                 out.extend_from_slice(&[c[0], c[0], c[0], c[1]]);
             }
             out
@@ -354,7 +354,9 @@ fn decode_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
 }
 
 fn rgb_to_argb_words(rgba: &[u8]) -> Vec<u32> {
-    rgba.chunks_exact(4)
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| {
             u32::from(c[3]) << 24 | u32::from(c[0]) << 16 | u32::from(c[1]) << 8 | u32::from(c[2])
         })

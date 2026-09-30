@@ -341,16 +341,11 @@ fn http_source_get_suspend(
     parse_name: &str,
     parse_sig: &str,
 ) -> R {
-    let result = (|| {
+    (|| {
         let request = inv_virt(vm, args[0], request_name, request_sig, request_args)?;
         let response = keiyoushi_execute(vm, &[request])?;
         inv_virt(vm, args[0], parse_name, parse_sig, &[response])
-    })();
-    match result {
-        Ok(value) => Ok(value),
-        Err(NatErr::Throw(error)) => Err(NatErr::Throw(error)),
-        Err(error) => Err(error),
-    }
+    })()
 }
 
 fn http_source_get_popular(vm: &mut Vm, args: &[JValue]) -> R {

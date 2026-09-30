@@ -471,11 +471,10 @@ impl Vm {
             return Ok(c);
         }
         let desc = self.str_of(desc_id).to_string();
-        if desc.starts_with('[') {
+        if let Some(inner) = desc.strip_prefix('[') {
             // find the dex type id for the inner descriptor of this array
             // descriptor (any dex), so array classes link to the exact
             // element type and nested-array assignability terminates.
-            let inner = &desc[1..];
             for (di, dex) in self.dexes.iter().enumerate() {
                 let Some(inner_tid) = dex.type_id_of(inner) else {
                     continue;

@@ -2,7 +2,6 @@
 //! kotlinx-serialization-protobuf decode path end-to-end against the real
 //! M+ API. Requires DEXVM_LIVE=1 and network access.
 
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use dexvm::keiyoushi::{FilterState, HttpResp, Keiyoushi};
@@ -44,9 +43,19 @@ fn to_resp(result: Result<ureq::http::Response<ureq::Body>, ureq::Error>) -> Htt
         Ok(r) => {
             let code = r.status().as_u16() as i32;
             let bytes = r.into_body().read_to_vec().unwrap_or_default();
-            HttpResp { code, message: "OK".into(), headers: Vec::new(), body: Some(bytes) }
+            HttpResp {
+                code,
+                message: "OK".into(),
+                headers: Vec::new(),
+                body: Some(bytes),
+            }
         }
-        Err(e) => HttpResp { code: 0, message: e.to_string(), headers: Vec::new(), body: None },
+        Err(e) => HttpResp {
+            code: 0,
+            message: e.to_string(),
+            headers: Vec::new(),
+            body: None,
+        },
     }
 }
 
@@ -67,7 +76,10 @@ fn mangaplus_search_protobuf() {
     let fl = ext.filters(src).unwrap_or_default();
     let states: Vec<FilterState> = fl
         .iter()
-        .map(|f| FilterState { name: f.name.clone(), state: f.state })
+        .map(|f| FilterState {
+            name: f.name.clone(),
+            state: f.state,
+        })
         .collect();
 
     // Phase 1: first open triggers the lazy language-list bootstrap
@@ -93,7 +105,10 @@ fn mangaplus_search_protobuf() {
     eprintln!("phase-2 filter count: {}", fl.len());
     let states: Vec<FilterState> = fl
         .iter()
-        .map(|f| FilterState { name: f.name.clone(), state: f.state })
+        .map(|f| FilterState {
+            name: f.name.clone(),
+            state: f.state,
+        })
         .collect();
 
     let found = ext
@@ -106,7 +121,10 @@ fn mangaplus_search_protobuf() {
         found.mangas.len(),
         found.has_next
     );
-    assert!(!found.mangas.is_empty(), "expected protobuf-decoded search results");
+    assert!(
+        !found.mangas.is_empty(),
+        "expected protobuf-decoded search results"
+    );
 
     for m in found.mangas.iter().take(5) {
         eprintln!("  - {} ({})", m.title, m.url);

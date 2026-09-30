@@ -1028,8 +1028,8 @@ pub(super) fn arrayskt_copy_into_bytes(vm: &mut Vm, args: &[JValue]) -> R {
     };
     let n = end.min(src.len()).saturating_sub(start.min(src.len()));
     let cap = dst.len().saturating_sub(dst_offset).min(n);
-    for i in 0..cap {
-        dst[dst_offset + i] = src[start + i];
+    if cap > 0 {
+        dst[dst_offset..dst_offset + cap].copy_from_slice(&src[start..start + cap]);
     }
     Ok(args[1])
 }
@@ -1062,8 +1062,8 @@ pub(super) fn arrayskt_copy_into_longs(vm: &mut Vm, args: &[JValue]) -> R {
     };
     let n = end.min(src.len()).saturating_sub(start.min(src.len()));
     let cap = dst.len().saturating_sub(dst_offset).min(n);
-    for i in 0..cap {
-        dst[dst_offset + i] = src[start + i];
+    if cap > 0 {
+        dst[dst_offset..dst_offset + cap].copy_from_slice(&src[start..start + cap]);
     }
     Ok(args[1])
 }
@@ -1100,9 +1100,7 @@ pub(super) fn arrayskt_fill_bytes_default(vm: &mut Vm, args: &[JValue]) -> R {
         return Err(npe(vm));
     };
     let end = to.min(dst.len());
-    for i in from.min(end)..end {
-        dst[i] = value;
-    }
+    dst[from.min(end)..end].fill(value);
     Ok(JValue::Null)
 }
 
@@ -1123,9 +1121,7 @@ pub(super) fn arrayskt_fill_longs_default(vm: &mut Vm, args: &[JValue]) -> R {
         return Err(npe(vm));
     };
     let end = to.min(dst.len());
-    for i in from.min(end)..end {
-        dst[i] = value;
-    }
+    dst[from.min(end)..end].fill(value);
     Ok(JValue::Null)
 }
 

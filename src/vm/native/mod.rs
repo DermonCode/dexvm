@@ -114,14 +114,14 @@ mod kotlinx;
 pub(crate) mod okhttp;
 #[cfg(feature = "okhttp")]
 mod okio;
+#[cfg(feature = "tachiyomi")]
+pub(crate) mod proto;
 #[cfg(feature = "quickjs")]
 mod quickjs;
 #[cfg(feature = "tachiyomi")]
 mod rx;
 #[cfg(feature = "tachiyomi")]
 pub(crate) mod serialization;
-#[cfg(feature = "tachiyomi")]
-pub(crate) mod proto;
 
 #[cfg(feature = "tachiyomi")]
 pub(crate) use self::keiyoushi::*;
@@ -328,7 +328,6 @@ pub(crate) fn nfe(vm: &mut Vm, m: impl Into<String>) -> NatErr {
 pub(crate) fn fnf(vm: &mut Vm, m: impl Into<String>) -> NatErr {
     NatErr::Throw(vm.err_fnf(m))
 }
-#[cfg(any(feature = "android", feature = "okhttp", feature = "tachiyomi"))]
 pub(crate) fn ioe(vm: &mut Vm, m: impl Into<String>) -> NatErr {
     NatErr::Throw(vm.err_ioe(m))
 }

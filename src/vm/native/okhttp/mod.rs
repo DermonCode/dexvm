@@ -2495,16 +2495,16 @@ fn host_execute(vm: &mut Vm, request: JValue) -> R {
     debug!("DBG HOST fetch {method} {url} hdrs={}", headers.len());
     let body_str = form_body_to_string(vm, &body);
     if let Some(JValue::Obj(id)) = body.as_ref() {
-        if let Some(Native::RequestBody { content_type, .. }) =
-            vm.arena.get(*id).and_then(|o| o.native.as_ref())
+        if let Some(Native::RequestBody {
+            content_type: Some(mt),
+            ..
+        }) = vm.arena.get(*id).and_then(|o| o.native.as_ref())
         {
-            if let Some(mt) = content_type {
-                if !headers
-                    .iter()
-                    .any(|(k, _)| k.eq_ignore_ascii_case("Content-Type"))
-                {
-                    headers.push(("Content-Type".to_string(), mt.clone()));
-                }
+            if !headers
+                .iter()
+                .any(|(k, _)| k.eq_ignore_ascii_case("Content-Type"))
+            {
+                headers.push(("Content-Type".to_string(), mt.clone()));
             }
         }
     }

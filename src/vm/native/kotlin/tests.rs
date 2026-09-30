@@ -458,6 +458,7 @@ fn instant_parse_and_reflection_bridges_are_real() {
     });
 }
 
+#[cfg(feature = "kotlin")]
 #[test]
 fn sequence_and_flatten_bridges_preserve_elements() {
     with_vm(|vm| {
@@ -598,7 +599,6 @@ fn high_frequency_string_and_mutex_bridges_are_real() {
 #[test]
 fn group_values_wire_initial_data() {
     with_vm(|vm| {
-        let html = "x wire:initial-data=\"{&quot;fingerprint&quot;:1}\" y";
         let pattern = r#"wire:initial-data="([^"]+)""#;
         let re = alloc(
             vm,

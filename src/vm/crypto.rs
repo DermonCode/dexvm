@@ -183,7 +183,7 @@ mod tests {
         let reference = Aes256Gcm::new_from_slice(&secret).unwrap();
         let theirs = reference
             .encrypt(
-                Nonce::from_slice(&iv),
+                &Nonce::try_from(iv.as_slice()).unwrap(),
                 Payload {
                     msg: plain,
                     aad: aad.as_ref(),
@@ -195,7 +195,7 @@ mod tests {
         assert_eq!(
             reference
                 .decrypt(
-                    Nonce::from_slice(&iv),
+                    &Nonce::try_from(iv.as_slice()).unwrap(),
                     Payload {
                         msg: &mine,
                         aad: aad.as_ref()

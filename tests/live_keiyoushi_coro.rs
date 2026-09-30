@@ -206,8 +206,8 @@ fn run_flow(apk_default: &str, expect_16plus: bool) {
         false,
     );
 
-    let live = popular.as_ref().map_or(false, |p| !p.mangas.is_empty())
-        || found.as_ref().map_or(false, |f| !f.mangas.is_empty());
+    let live = popular.as_ref().is_some_and(|p| !p.mangas.is_empty())
+        || found.as_ref().is_some_and(|f| !f.mangas.is_empty());
     if !live {
         eprintln!(
             "warn: no manga parsed from the live site (WAF/geo/outage?) — pipeline \

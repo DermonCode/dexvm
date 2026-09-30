@@ -497,7 +497,9 @@ fn parse_string_pool(data: &[u8], off: usize) -> Result<(Vec<String>, usize), Ma
                 return Err(ManifestError::Parse("utf16 string overruns".into()));
             }
             data[s + 2..end2]
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|c| u16::from_le_bytes([c[0], c[1]]))
                 .collect::<Vec<u16>>()
                 .into_iter()

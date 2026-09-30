@@ -420,6 +420,7 @@ impl Context {
         &mut self,
         preference_file: &str,
     ) -> std::collections::HashMap<String, PreferenceValue> {
+        #[cfg(feature = "android")]
         let _ = crate::vm::native::android::load_shared_preferences(self.vm());
         self.vm
             .shared_preferences
@@ -459,6 +460,7 @@ impl Context {
             .entry(preference_file.to_string())
             .or_default()
             .insert(key.to_string(), value);
+        #[cfg(feature = "android")]
         if let Some(path) = self.vm.shared_preferences_path.clone() {
             crate::vm::native::android::persist_shared_preferences(
                 &path,
@@ -1070,6 +1072,7 @@ mod tests {
         assert_eq!(notified.get(), 1);
     }
 
+    #[cfg(feature = "android")]
     #[test]
     fn preference_definitions_expose_kind_entries_and_defaults() {
         let data = std::fs::read("fixtures/classes.dex").unwrap();

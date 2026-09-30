@@ -227,7 +227,7 @@ fn regex_to_string(vm: &mut Vm, args: &[JValue]) -> R {
 // kotlin.collections.CollectionsKt (statics)
 // ---------------------------------------------------------------------------
 
-/// `CollectionsKt.build(list)` — the builder is already the final list.
+// `CollectionsKt.build(list)` — the builder is already the final list.
 
 fn stringskt_starts_with_default(vm: &mut Vm, args: &[JValue]) -> R {
     let s = charseq_of(vm, args[0])?;
@@ -246,9 +246,9 @@ fn stringskt_starts_with_default(vm: &mut Vm, args: &[JValue]) -> R {
     Ok(JValue::Int(r as i32))
 }
 
-/// kotlin.collections.joinToString with the compiler-generated `$default`
-/// marker: (iterable, separator, prefix, postfix, limit, truncated,
-/// transform, mask, marker).
+// kotlin.collections.joinToString with the compiler-generated `$default`
+// marker: (iterable, separator, prefix, postfix, limit, truncated,
+// transform, mask, marker).
 
 // kotlin.text
 // ---------------------------------------------------------------------------
@@ -461,7 +461,7 @@ fn rfind_ignore_case(haystack: &str, needle: &str) -> Option<usize> {
     let haystack_chars: Vec<(usize, char)> = haystack.char_indices().collect();
     haystack_chars
         .windows(needle_chars.len())
-        .filter(|window| {
+        .rfind(|window| {
             window
                 .iter()
                 .zip(&needle_chars)
@@ -469,7 +469,6 @@ fn rfind_ignore_case(haystack: &str, needle: &str) -> Option<usize> {
                     hay_char.to_lowercase().next() == needle_char.to_lowercase().next()
                 })
         })
-        .last()
         .map(|window| window[0].0)
 }
 
@@ -748,7 +747,10 @@ fn match_result_destructured_to_list(vm: &mut Vm, args: &[JValue]) -> R {
             .collect::<Vec<_>>(),
         _ => return Err(npe(vm)),
     };
-    let values = values.into_iter().map(|value| new_str(vm, &value)).collect();
+    let values = values
+        .into_iter()
+        .map(|value| new_str(vm, &value))
+        .collect();
     list_alloc(vm, values)
 }
 
@@ -757,7 +759,11 @@ fn match_result_get_destructured(vm: &mut Vm, args: &[JValue]) -> R {
         Some(Native::Matcher(ms)) => ms.clone(),
         _ => return Err(npe(vm)),
     };
-    alloc(vm, "Lkotlin/text/MatchResult$Destructured;", Native::Matcher(state))
+    alloc(
+        vm,
+        "Lkotlin/text/MatchResult$Destructured;",
+        Native::Matcher(state),
+    )
 }
 
 /// `MatchResult.getGroupValues` — the whole match followed by every
@@ -795,9 +801,9 @@ fn match_group_get_value(vm: &mut Vm, args: &[JValue]) -> R {
     Ok(new_str(vm, &value))
 }
 
-/// Kotlin's ISO-8601 parser used by extension date filters.  This accepts the
-/// common UTC form (`YYYY-MM-DDTHH:MM:SS[.fraction]Z`) and returns null for
-/// malformed/unsupported values, matching `parseOrNull`.
+// Kotlin's ISO-8601 parser used by extension date filters.  This accepts the
+// common UTC form (`YYYY-MM-DDTHH:MM:SS[.fraction]Z`) and returns null for
+// malformed/unsupported values, matching `parseOrNull`.
 
 // java.net.URI
 // ---------------------------------------------------------------------------
@@ -1481,7 +1487,7 @@ fn stringskt_find_any_of_default(vm: &mut Vm, args: &[JValue]) -> R {
             hay.find(needle)
         };
         if let Some(index) = found {
-            if best.map_or(true, |(b, _)| index < b) {
+            if best.is_none_or(|(b, _)| index < b) {
                 best = Some((index, needle));
             }
         }
@@ -1825,7 +1831,7 @@ fn ustrings_to_string_radix(vm: &mut Vm, args: &[JValue]) -> R {
 // kotlin.time.Duration value-class methods (host stdlib)
 // ---------------------------------------------------------------------------
 
-/// `Duration.getInWholeMilliseconds-impl(J)J`; raw unit is milliseconds.
+// `Duration.getInWholeMilliseconds-impl(J)J`; raw unit is milliseconds.
 
 // ---------------------------------------------------------------------------
 // kotlin stdlib native table

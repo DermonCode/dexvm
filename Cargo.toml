@@ -77,6 +77,18 @@ required-features = ["keiyoushi"]
 name = "injekt_scan"
 required-features = ["injekt"]
 
+[[test]]
+name = "settings_flow"
+required-features = ["keiyoushi"]
+
+[[test]]
+name = "live_mangaplus"
+required-features = ["keiyoushi"]
+
+[[test]]
+name = "live_keiyoushi_coro"
+required-features = ["keiyoushi"]
+
 [dependencies]
 fancy-regex = "0.19.0"
 zip = "8.6.0"

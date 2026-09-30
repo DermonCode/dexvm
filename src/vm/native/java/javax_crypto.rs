@@ -204,8 +204,8 @@ fn aes_block_mode(
 
     let mut out = Vec::with_capacity(data.len());
     let mut chain = if cbc { iv.to_vec() } else { vec![0; 16] };
-    for chunk in data.chunks_exact(16) {
-        let mut block: [u8; 16] = chunk.try_into().map_err(|_| "bad AES block")?;
+    for chunk in data.as_chunks::<16>().0 {
+        let mut block = *chunk;
         if mode == 1 {
             if cbc {
                 for (byte, previous) in block.iter_mut().zip(&chain) {

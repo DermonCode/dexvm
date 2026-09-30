@@ -121,7 +121,7 @@ pub(super) fn progression_step(vm: &mut Vm, args: &[JValue]) -> R {
     if step <= 0 {
         return Err(NatErr::Throw(vm.throwable_of(
             "Ljava/lang/IllegalArgumentException;",
-            &format!("Step must be positive, was: {step}"),
+            format!("Step must be positive, was: {step}"),
         )));
     }
     // Real Kotlin `IntProgression.step`: the direction follows the
@@ -292,11 +292,11 @@ fn coerce_in_closed_range(vm: &mut Vm, args: &[JValue]) -> R {
     let start = vm
         .invoke_virtual(args[1], "getStart", "()Ljava/lang/Comparable;")
         .map_err(nat_fatal)
-        .and_then(|v| Ok::<i32, NatErr>(int_of(vm, v)))?;
+        .map(|v| int_of(vm, v))?;
     let end = vm
         .invoke_virtual(args[1], "getEndInclusive", "()Ljava/lang/Comparable;")
         .map_err(nat_fatal)
-        .and_then(|v| Ok::<i32, NatErr>(int_of(vm, v)))?;
+        .map(|v| int_of(vm, v))?;
     Ok(JValue::Int(value.max(start).min(end)))
 }
 

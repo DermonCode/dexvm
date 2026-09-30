@@ -2,6 +2,9 @@
 
 use crate::vm::value::JValue;
 
+/// One polymorphic serializer registration and its optional default handler.
+pub type PolymorphicRegistration = (JValue, Vec<(JValue, JValue)>, Option<JValue>);
+
 /// Deferred RxJava 1 operations. Keeping callbacks in the heap payload lets
 /// `fromCallable` and its operator chain run when the stream is consumed.
 #[derive(Debug, Clone)]
@@ -728,7 +731,7 @@ pub enum Native {
     /// kotlinx.serialization SerializersModule: polymorphic base -> (subclass
     /// KClass, serializer, defaultDeserializer lambda) registrations.
     SerializersModule {
-        polys: Vec<(JValue, Vec<(JValue, JValue)>, Option<JValue>)>,
+        polys: Vec<PolymorphicRegistration>,
     },
     /// kotlinx.serialization Json instance carrying a SerializersModule.
     JsonWithModule {

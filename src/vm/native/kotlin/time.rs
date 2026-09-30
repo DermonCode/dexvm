@@ -65,7 +65,7 @@ pub(super) fn kotlin_instant_parse_or_null(vm: &mut Vm, args: &[JValue]) -> R {
         return Ok(JValue::Null);
     };
     let time = time.strip_suffix('Z').unwrap_or(time);
-    let (clock, frac) = time.split_once('.').map_or((time, ""), |v| v);
+    let (clock, frac) = time.split_once('.').unwrap_or((time, ""));
     let mut c = clock.split(':');
     let (Ok(h), Ok(min), Ok(sec)) = (
         c.next().unwrap_or("").parse::<i64>(),

@@ -349,7 +349,9 @@ fn class_resource_key(vm: &mut Vm, args: &[JValue]) -> Result<String, NatErr> {
         return Err(npe(vm));
     };
     let descriptor = vm.str_of(vm.classes[*class_id as usize].descriptor);
-    let package = descriptor.strip_prefix('L').and_then(|name| name.rsplit_once('/'));
+    let package = descriptor
+        .strip_prefix('L')
+        .and_then(|name| name.rsplit_once('/'));
     Ok(match package {
         Some((package, _)) => format!("{package}/{path}"),
         None => path,
@@ -361,7 +363,11 @@ pub(crate) fn class_get_resource(vm: &mut Vm, args: &[JValue]) -> R {
     if !vm.resources.contains_key(&key) {
         return Ok(JValue::Null);
     }
-    alloc(vm, "Ljava/net/URL;", Native::URI(format!("resource:/{key}")))
+    alloc(
+        vm,
+        "Ljava/net/URL;",
+        Native::URI(format!("resource:/{key}")),
+    )
 }
 
 pub(crate) fn class_get_resource_as_stream(vm: &mut Vm, args: &[JValue]) -> R {
@@ -369,7 +375,11 @@ pub(crate) fn class_get_resource_as_stream(vm: &mut Vm, args: &[JValue]) -> R {
     let Some(bytes) = vm.resources.get(&key).cloned() else {
         return Ok(JValue::Null);
     };
-    alloc(vm, "Ljava/io/ByteArrayInputStream;", Native::ByteArrayInputStream { bytes, pos: 0 })
+    alloc(
+        vm,
+        "Ljava/io/ByteArrayInputStream;",
+        Native::ByteArrayInputStream { bytes, pos: 0 },
+    )
 }
 
 pub(crate) fn class_get_interfaces(_vm: &mut Vm, _args: &[JValue]) -> R {

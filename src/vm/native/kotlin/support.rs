@@ -47,7 +47,7 @@ pub(super) fn kotlin_random_default_next_int(vm: &mut Vm, args: &[JValue]) -> R 
     };
     let (from, until) = if args.len() >= first + 2 {
         (args[first].as_int(), args[first + 1].as_int())
-    } else if args.len() >= first + 1 {
+    } else if args.len() > first {
         (0, args[first].as_int())
     } else {
         (0, 1)
